@@ -124,4 +124,4 @@
 - Куда: prod/knowledge/08-client-communication.md
 - Источник: владелец
 - Подтверждения: wine-landing
-- Статус: ждёт
+- Статус: в проде (2026-10-06)
