@@ -61,4 +61,4 @@
 - Куда: prod/knowledge/11-services.md + prod/knowledge/09-security.md + prod/CLAUDE.md (раздел 6)
 - Источник: владелец
 - Подтверждения: —
-- Статус: ждёт
+- Статус: в проде (2026-10-06)
