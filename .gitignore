@@ -1,0 +1,25 @@
+# Секреты
+.env
+.env.*
+!.env.example
+
+# Зависимости и сборка
+node_modules/
+dist/
+build/
+.next/
+.vercel/
+.netlify/
+
+# Система
+.DS_Store
+Thumbs.db
+
+# Тяжёлые исходники (храните в Figma, здесь — ссылки и скриншоты)
+*.fig
+*.psd
+*.mp4
+*.mov
+
+# Прогоны тестов (код сайтов)
+lab/test-runs/*/
