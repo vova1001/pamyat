@@ -72,8 +72,11 @@
 CLAUDE.md               ← этот файл
 knowledge/              ← правила и стандарты (начинай с 00-index.md)
 references/<ниша>/      ← референсы: скриншоты + links.md со ссылками на Figma
+figma/                  ← как устроен файл макета, ссылка на базовый шаблон
 components/             ← проверенные блоки, готовые к переиспользованию
 projects/<имя>/         ← каждый сайт отдельно: brief/audit, style, content, revisions, services, код
+  design/               ← links.md (ссылки на макет и версии), approved/ (скриншоты согласованного)
+  assets/               ← логотип, фото и материалы от заказчика
 .claude/skills/         ← пошаговые процедуры
 ```
 
