@@ -22,7 +22,7 @@ prod/              ← ПРОДУКТ: только работа — этапы 
   figma/
   components/
   references/
-  .claude/skills/  ← new-project, self-review
+  .claude/skills/  ← new-project, self-review, show-result
 lab/               ← ОБУЧЕНИЕ
   owner.md         ← что агент знает о владельце, его решения
   inbox/           ← черновики памяти, у каждого обучающего свой файл
