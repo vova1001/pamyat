@@ -169,10 +169,27 @@ header.solid .hdr-cta{border-color:var(--ink);color:var(--ink)}
 .step h3{font-size:30px;margin:8px 0 10px}
 .step p{color:var(--muted);font-size:15px}
 .social{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+/* faq + contact */
+.faq{max-width:860px;margin:0 auto}
+.faq details{border-bottom:1px solid var(--sand);padding:22px 4px}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:20px;font:500 26px var(--serif)}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font:300 30px var(--serif);color:var(--wine);transition:transform .4s var(--ease)}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq details p{color:var(--muted);margin-top:12px;max-width:40em}
+.contact{position:relative;background:var(--paper);overflow:hidden;text-align:center}
+.contact h2{font-size:clamp(46px,6.4vw,92px);line-height:1}
+.contact h2 em{display:block;color:var(--olive)}
+.contact p{color:var(--muted);max-width:32em;margin:22px auto 30px}
+.icons{display:flex;gap:12px;justify-content:center;margin-bottom:24px}
+.icons a{width:56px;height:56px;border-radius:50%;border:1.5px solid var(--ink);display:grid;place-items:center;transition:.3s var(--ease)}
+.icons a:hover{background:var(--wine);border-color:var(--wine);color:#fff}
 /* footer */
 footer{background:var(--ink);color:#d8cfc4;padding:80px 0 30px;font-size:14px}
 footer .logo{color:#fff;font-size:44px}
-.fgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:40px}
+.fgrid{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1.2fr;gap:36px}
+footer ul{list-style:none}footer li{margin:6px 0}footer li a{opacity:.85;transition:.3s}footer li a:hover{opacity:1;color:var(--gold)}
+.fbottom{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:40px;font-size:12px;color:#8f8377}
 footer h4{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:#a89c90;margin-bottom:12px}
 .credits{margin-top:50px;padding-top:20px;border-top:1px solid #4a3f35;font-size:12px;color:#8f8377}
 .warn{font-size:13px;color:#d8cfc4;margin-bottom:8px}
@@ -191,7 +208,7 @@ footer h4{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercas
 .fmenu{position:fixed;inset:0;z-index:40;background:var(--ink);color:var(--cream);display:grid;grid-template-columns:1.2fr 1fr;clip-path:circle(0 at 40px 40px);transition:clip-path .9s var(--ease)}
 .fmenu.open{clip-path:circle(150% at 40px 40px)}
 .fmenu nav{display:flex;flex-direction:column;justify-content:center;padding:0 8vw;gap:6px}
-.fmenu nav a{font:400 clamp(40px,5.5vw,76px)/1.15 var(--serif);transition:.4s var(--ease);display:flex;gap:18px;align-items:baseline}
+.fmenu nav a{font:400 clamp(36px,4.8vw,66px)/1.12 var(--serif);transition:.4s var(--ease);display:flex;gap:18px;align-items:baseline}
 .fmenu nav a small{font:italic 400 18px var(--serif);color:var(--sun)}
 .fmenu nav a:hover{color:var(--gold);transform:translateX(14px)}
 .fmenu .pic{position:relative;overflow:hidden}
@@ -247,7 +264,9 @@ footer h4{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercas
   .family .photo{height:420px}
   .values{gap:10px}.value .ring{width:84px;height:84px}.value b{font-size:18px}
   .split .media{height:300px}.split .txt{padding:34px 26px}
-  .cards,.offer,.order .steps,.fgrid{grid-template-columns:1fr}
+  .cards,.offer,.order .steps{grid-template-columns:1fr}
+  .fgrid{grid-template-columns:1fr 1fr}.fgrid>div:first-child{grid-column:1/3}
+  .faq summary{font-size:21px}
   .steps-t{gap:70px}.trow:nth-child(even) .tmedia{order:0}.tmedia{height:320px}
   .circle-num{width:110px;height:110px;font-size:60px}
   .menu-card{padding:30px 22px}
@@ -278,6 +297,7 @@ footer h4{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercas
     <a href="#pair" data-img="wine-still-life"><small>04</small>Вино к ужину</a>
     <a href="#guests" data-img="estate"><small>05</small>В гости</a>
     <a href="#order" data-img="bottle-pour-poster"><small>06</small>Заказ</a>
+    <a href="#faq" data-img="cellar-barrels"><small>07</small>Вопросы и контакты</a>
   </nav>
   <div class="pic"></div>
 </div>
@@ -445,15 +465,44 @@ footer h4{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercas
   <p style="text-align:center;margin-top:14px"><span class="note">Какие соцсети подключаем — уточнить</span></p>
 </div></section>
 
+<section class="sec" id="faq"><div class="wrap">
+  <div class="head rv"><span class="num">(08) Вопросы</span><h2><span class="cap">Ч</span>астые вопросы</h2></div>
+  <div class="faq rv">
+    <details open><summary>Куда вы доставляете?</summary><p>[УТОЧНИТЬ: города и страны доставки, сроки, стоимость].</p></details>
+    <details><summary>Как оплатить заказ?</summary><p>[УТОЧНИТЬ: способы оплаты — перевод, карта при получении и т. п.].</p></details>
+    <details><summary>Можно ли приехать на винодельню?</summary><p>[УТОЧНИТЬ: да / нет, как записаться на экскурсию].</p></details>
+    <details><summary>Как хранить вино после покупки?</summary><p>Лёжа, в тёмном прохладном месте, при 12–16 °C, вдали от отопления и солнца.</p></details>
+    <details><summary>Делаете ли подарочные наборы?</summary><p>[УТОЧНИТЬ: есть ли наборы, коробки, открытки].</p></details>
+  </div>
+</div></section>
+
+<section class="sec contact" id="contact">
+  <div class="watermark" style="bottom:-40px">vino</div>
+  <div class="wrap rv">
+    <span class="num">Связь</span>
+    <h2>Остались вопросы? <em>Напишите нам</em></h2>
+    <p>Ответим быстро и с удовольствием подскажем вино — к ужину, в подарок или для праздника.</p>
+    <div class="icons">
+      <a href="#" aria-label="WhatsApp"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.1-.3.3-.1.6.2.3.7 1.2 1.6 2 1.1 1 2 1.3 2.3 1.4.3.2.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.1z"/></svg></a>
+      <a href="#" aria-label="Instagram"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg></a>
+      <a href="#" aria-label="Telegram"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M21.5 3.6 2.9 10.8c-1.3.5-1.2 1.2-.2 1.5l4.8 1.5 1.8 5.6c.2.6.4.8.8.8s.6-.2.9-.5l2.3-2.2 4.7 3.5c.9.5 1.5.2 1.7-.8l3.1-14.6c.3-1.3-.5-1.9-1.3-1.5zM9.2 13.4l9-5.7-7.1 6.6-.3 3z"/></svg></a>
+    </div>
+    <a class="btn btn-wine" href="#order">Задать вопрос</a>
+  </div>
+</section>
+
 <footer><div class="wrap">
   <div class="fgrid">
-    <div><div class="logo">[Название]</div><p style="margin-top:10px">Семейная винодельня · Мадрид, Испания</p></div>
-    <div><h4>Разделы</h4><p>Земля<br>Семья<br>Вина<br>Вино к ужину<br>В гости<br>Заказ</p></div>
-    <div><h4>Связаться</h4><p>[Телефон]<br>[Соцсети]<br>[Адрес винодельни]</p></div>
+    <div><div class="logo">[Название]</div><p style="margin-top:10px">Семейная винодельня · Мадрид, Испания</p><p style="margin-top:14px"><a class="btn btn-wine" href="#order" style="min-height:44px;padding:0 22px">Заказать вино</a></p></div>
+    <div><h4>О нас</h4><ul><li><a href="#region">Земля</a></li><li><a href="#family">Семья и история</a></li><li><a href="#terroir">Терруар</a></li><li><a href="#year">Год на винограднике</a></li></ul></div>
+    <div><h4>Вина</h4><ul><li><a href="#wines">Стилистика вин</a></li><li><a href="#wines">Каталог</a></li><li><a href="#pair">Вино к ужину</a></li><li><a href="#order">Как заказать</a></li></ul></div>
+    <div><h4>Гостям</h4><ul><li><a href="#guests">Экскурсии</a></li><li><a href="#guests">Дегустации</a></li><li><a href="#guests">Меню к вину</a></li><li><a href="#faq">Частые вопросы</a></li></ul></div>
+    <div><h4>Контакты</h4><ul><li>[Адрес винодельни]</li><li>[Телефон]</li><li>[Часы работы]</li><li><a href="#contact">WhatsApp · Instagram · Telegram</a></li></ul></div>
   </div>
   <div class="credits">
     <p class="warn">Сайт только для лиц старше 18 лет. Чрезмерное употребление алкоголя вредит вашему здоровью.</p>
-    Фото: khawkins04, Jaykhuang, Ed Clayton, Christian Haugen, ciamabue — Flickr, CC BY 2.0. Видео: Mixkit.
+    Фото: Jaykhuang, Ed Clayton, Christian Haugen, ciamabue — Flickr, CC BY 2.0. Видео и фото: Mixkit.
+    <div class="fbottom"><span>© [Год] [Название]</span><span><a href="#">Политика конфиденциальности</a> · <a href="#">Обработка cookies</a></span></div>
   </div>
 </div></footer>
 
