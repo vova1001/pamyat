@@ -29,3 +29,5 @@ lab/test-runs/*/
 !prod/components/*/assets/video/*.mp4
 !prod/components/*/assets/video/*.webm
 !projects/*/assets/video/*.webm
+!lab/reference-candidates/modern/*/flythrough.mp4
+!prod/references/**/*.mp4
