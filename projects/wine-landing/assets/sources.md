@@ -20,3 +20,12 @@
 | photo/young-vines-soil.jpg | Ed Clayton | https://www.flickr.com/photos/38237724@N00/5969499629 |
 | photo/cellar-barrels.jpg | Christian Haugen | https://www.flickr.com/photos/34073237@N04/6026460141 |
 | photo/barrels-rows.jpg | ciamabue | https://www.flickr.com/photos/25588248@N00/9536003395 |
+
+## Продукт (временно, до фото вин заказчика) — Mixkit
+| Файл | Источник |
+|---|---|
+| video/red-pour.mp4, photo/red-glass.jpg | https://mixkit.co — клип 52407 |
+| video/bottle-pour.mp4, photo/bottle-pour-poster.jpg | https://mixkit.co — клип 22734 |
+| photo/wine-still-life.jpg | https://mixkit.co — клип 22746 |
+| photo/white-glass.jpg | https://mixkit.co — клип 52418 |
+| photo/bottle-pour.jpg | https://mixkit.co — клип 22736 |
