@@ -27,3 +27,5 @@ lab/test-runs/*/
 # Лёгкие видео проектов (до нескольких МБ) храним в репозитории
 !projects/*/assets/video/*.mp4
 !prod/components/*/assets/video/*.mp4
+!prod/components/*/assets/video/*.webm
+!projects/*/assets/video/*.webm
