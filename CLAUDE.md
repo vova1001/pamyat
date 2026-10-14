@@ -18,15 +18,15 @@
 ```
 prod/                    ← ПРОДУКТ: только исполнение. Едет в сервис.
   CLAUDE.md                менеджер проекта (главный агент)
-  .claude/agents/<отдел>/  агенты команды: 21 роль в 7 отделах
+  .claude/agents/<отдел>/  агенты команды: 27 агентов в 8 отделах
   crew/<отдел>/<роль>/     память каждой роли (MEMORY.md + файлы)
-  common/                  общее для всех: стандарты, передача задач, безопасность, ошибки
+  common/                  общее для всех: полный цикл, стандарты, передача задач, безопасность, ошибки
   niches/ components/ references/
   .claude/skills/          new-project, show-result
 lab/                     ← ОБУЧЕНИЕ: зеркало prod/ + всё вокруг
   crew/<отдел>/<роль>/notes.md   черновики памяти каждой роли
   talk/                    общение с владельцем: owner, ideas, mistakes, questions
-  parked/                  отложенное (сервисы, запуск)
+  parked/                  история отложенного (сервисы и запуск вернулись в прод)
   archive/  rejected.md  changelog.md  test-clients/  test-runs/  reference-candidates/
 projects/                ← проекты лаборатории (НЕ в prod/projects)
 team/                    ← команда людей: как подключиться, правила, участники
