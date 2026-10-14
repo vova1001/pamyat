@@ -18,5 +18,5 @@
 - Куда: prod/crew/dev/tech-lead/MEMORY.md (шаги 9–10), prod/common/cycle.md (шаг 9)
 - Источник: владелец
 - Подтверждения: wine-landing
-- Статус: ждёт
+- Статус: в проде (2026-10-14)
 
