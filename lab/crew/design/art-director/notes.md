@@ -10,4 +10,4 @@
 - Куда: prod/crew/management/manager/revisions.md (кому отдавать правку), prod/common/cycle.md (шаг 12), prod/crew/dev/tech-lead/MEMORY.md (без согласованного макета вид не меняем), prod/crew/design/art-director/MEMORY.md
 - Источник: владелец
 - Подтверждения: wine-landing
-- Статус: предложено (2026-10-14)
+- Статус: в проде (2026-10-14)
