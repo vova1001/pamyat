@@ -10,4 +10,4 @@
 - Куда: prod/common/cycle.md (шаг 7/13) + prod/crew/infra/devops/MEMORY.md
 - Источник: агент (продюсер, тест №1)
 - Подтверждения: wine-landing
-- Статус: ждёт
+- Статус: в проде (2026-10-14)

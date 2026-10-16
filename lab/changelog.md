@@ -4,6 +4,16 @@
 
 Формат: `- <дата> | <файл> | <что добавлено/изменено> | источник: владелец/2 проекта`
 
+- 2026-10-15 | prod/common/cycle, infra/services-manager, infra/devops, common/security | интеграции: сначала полностью на сайте, потом логин и пароль заказчика, всё настраивает команда | источник: владелец
+- 2026-10-15 | prod/crew/management/manager/playbook.md (новый), MEMORY, communication, CLAUDE.md | ведение клиента на весь цикл: цель, правила, ветки | источник: владелец
+- 2026-10-14 | prod/crew/management/manager/acceptance | согласование фиксировать в файлах сразу | источник: агент, одобрено владельцем
+- 2026-10-14 | prod/crew/infra/devops, common/cycle | долгие регистрации сразу после «ок» на вариант | источник: агент, одобрено владельцем
+- 2026-10-14 | prod/common/cycle, manager/revisions, dev/tech-lead, design/art-director | после согласования новое — сначала в Figma | источник: владелец
+- 2026-10-14 | prod/common/cycle, dev/tech-lead, skill new-project | репозиторий заказчика в организации до разработки | источник: владелец
+- 2026-10-14 | prod/CLAUDE.md, common/standards, common/cycle | только результат (приоритет дизайну и разработке), один вариант, ссылка после каждого ответа, сначала полная оболочка | источник: владелец
+- 2026-10-14 | prod/crew/quality/legal, qa-lead, niches/wine | юрист предупреждает один раз и не запрещает | источник: владелец
+- 2026-10-14 | prod/crew/management/manager, skill show-result | показ — ссылка или превью; без внутренней кухни; один вариант | источник: владелец
+- 2026-10-14 | prod/crew/infra/devops, services-manager, producer, design/art-director, ui-designer, brand-designer, dev/tech-lead | один вариант; заказчик сам регистрируется в платёжной системе; сквозной кусок первым | источник: владелец
 - 2026-10-14 | prod/crew/infra/services-manager, manager/communication, common/security | пароль для регистраций выбирает заказчик: один или свой на каждый сервис | источник: владелец
 - 2026-10-14 | prod/crew/quality/legal | оплата на сайте: оферта, реквизиты, возврат, чеки, ограниченные товары | источник: владелец (формулировка агента), одобрено
 - 2026-10-14 | prod/crew/quality/security | оплата: без данных карт, подпись уведомлений, ключи | источник: владелец (формулировка агента), одобрено

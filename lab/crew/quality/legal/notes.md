@@ -18,5 +18,5 @@
 - Куда: prod/crew/quality/legal/MEMORY.md (вступление + формат отчёта), prod/crew/quality/qa-lead/MEMORY.md («чисто» — юридические риски бизнеса не блокируют), prod/crew/management/manager/communication.md («Сложные ситуации»), prod/niches/wine.md («Закон и ограничения»)
 - Источник: владелец
 - Подтверждения: wine-landing
-- Статус: предложено (2026-10-14)
+- Статус: в проде (2026-10-14)
 
