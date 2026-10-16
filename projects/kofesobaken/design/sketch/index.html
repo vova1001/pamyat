@@ -337,6 +337,64 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
   .mbar{display:none}
   .toast{bottom:32px}
 }
+
+/* ---------- events (добавлено после согласования) ---------- */
+.events{overflow:hidden}
+.ev__grid{display:grid;gap:22px}
+.ev{background:var(--milk);border-radius:var(--r-lg);overflow:hidden;display:flex;flex-direction:column;position:relative;transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+.ev:hover{transform:translateY(-6px) rotate(-.4deg);box-shadow:0 30px 60px -40px rgba(42,26,18,.5)}
+.ev__img{aspect-ratio:4/3;overflow:hidden;position:relative;background:var(--foam)}
+.ev__img img{width:100%;height:100%;object-fit:cover;transition:transform 1s var(--ease)}
+.ev:hover .ev__img img{transform:scale(1.06)}
+.ev__date{position:absolute;left:14px;top:14px;background:var(--milk);border-radius:18px;padding:10px 12px 8px;text-align:center;font-family:var(--f-head);line-height:1;box-shadow:0 12px 30px -14px rgba(42,26,18,.6);min-width:66px}
+.ev__date b{display:block;font-size:30px;font-weight:800;letter-spacing:-.04em}
+.ev__date small{display:block;font-size:12px;font-weight:700;color:var(--tomato);margin-top:4px}
+.ev__type{position:absolute;right:14px;bottom:12px;font-family:var(--f-hand);font-weight:700;font-size:22px;background:var(--butter);padding:0 14px;border-radius:999px;transform:rotate(-4deg)}
+.ev__cut{position:relative;border-top:2px dashed var(--line);margin:0 22px}
+.ev__cut::before,.ev__cut::after{content:"";position:absolute;top:-13px;width:24px;height:24px;border-radius:50%;background:var(--cream)}
+.ev__cut::before{left:-36px}.ev__cut::after{right:-36px}
+.ev__body{padding:20px 22px 24px;display:flex;flex-direction:column;gap:10px;flex:1}
+.ev__meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-weight:700;font-size:14px}
+.ev__meta span{display:flex;align-items:center;gap:6px}
+.ev__meta svg{width:16px;height:16px;fill:var(--tomato)}
+.ev__body p{color:var(--soft)}
+.ev__foot{margin-top:auto;padding-top:8px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.seats{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700;color:var(--soft);min-width:120px;flex:1}
+.seats i{display:block;height:6px;border-radius:3px;background:var(--cream);overflow:hidden}
+.seats i::after{content:"";display:block;height:100%;width:var(--fill);background:var(--tomato);border-radius:3px}
+.ev .btn{min-height:48px;padding:0 22px}
+.ev .btn[disabled]{background:var(--cream);color:var(--soft);box-shadow:none;cursor:not-allowed;transform:none}
+.ev--full .ev__img img{filter:grayscale(.5)}
+.ev__empty{display:none;flex-direction:column;align-items:center;text-align:center;gap:14px;background:var(--milk);border:2px dashed var(--line);border-radius:var(--r-lg);padding:52px 22px}
+.ev__empty svg.big{width:72px;height:72px}
+.ev__empty p{color:var(--soft);max-width:40ch}
+.events.is-empty .ev__grid{display:none}.events.is-empty .ev__empty{display:flex}
+.ev__note{margin-top:22px;font-size:13px;color:var(--soft);display:flex;gap:8px;align-items:center}
+/* запись — окно */
+.modal{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;background:rgba(42,26,18,.55);opacity:0;pointer-events:none;transition:opacity .35s}
+.modal.open{opacity:1;pointer-events:auto}
+.modal__box{background:var(--milk);width:100%;max-width:520px;max-height:94vh;overflow:auto;border-radius:var(--r-lg) var(--r-lg) 0 0;padding:22px 20px 26px;transform:translateY(40px);transition:transform .5s var(--ease);position:relative}
+.modal.open .modal__box{transform:none}
+.modal__x{position:absolute;right:14px;top:14px;width:42px;height:42px;border-radius:50%;border:0;background:var(--cream);font-size:22px;cursor:pointer}
+.modal__x:hover{background:var(--pink)}
+.modal__ev{display:flex;gap:14px;align-items:center;margin:0 50px 18px 0}
+.modal__ev img{width:64px;height:64px;border-radius:16px;object-fit:cover;flex:none}
+.modal__ev small{color:var(--soft);font-weight:700;font-size:13px}
+.contact-seg{margin-bottom:-4px}
+#evModal.is-sent .form{display:none}#evModal.is-sent .success{display:flex}
+@media (min-width:640px){.ev__grid{grid-template-columns:1fr 1fr}.ev--main{grid-column:1/-1}.ev--main .ev__img{aspect-ratio:16/8}}
+@media (min-width:1024px){
+  .ev__grid{grid-template-columns:1.15fr 1fr;grid-template-rows:1fr 1fr;gap:26px}
+  .ev--main{grid-column:auto;grid-row:span 2}
+  .ev--main .ev__img{aspect-ratio:auto;flex:1;min-height:340px}
+  .ev--main h3{font-size:30px}
+  .ev:not(.ev--main){flex-direction:row}
+  .ev:not(.ev--main) .ev__img{aspect-ratio:auto;width:42%;flex:none}
+  .ev:not(.ev--main) .ev__cut{display:none}
+  .ev:not(.ev--main) .ev__body{border-left:2px dashed var(--line);padding:24px 26px}
+  .modal{align-items:center}
+  .modal__box{border-radius:var(--r-lg);padding:32px}
+}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
   .rv{opacity:1;transform:none}
@@ -361,7 +419,7 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
   <div class="wrap hdr__in">
     <a class="logo" href="#top" aria-label="КофеСобакен — на главную"><svg><use href="#logo"/></svg>КофеСобакен</a>
     <nav class="nav" aria-label="Разделы">
-      <a href="#why">Почему к нам</a><a href="#menu">Меню</a><a href="#dogs">Собаки</a><a href="#order">С собой</a><a href="#find">Как добраться</a>
+      <a href="#why">Почему к нам</a><a href="#menu">Меню</a><a href="#dogs">Собаки</a><a href="#events">Мероприятия</a><a href="#order">С собой</a><a href="#find">Как добраться</a>
     </nav>
     <a class="btn btn--main hdr__cta" href="#booking">Забронировать</a>
     <button class="burger" id="burger" aria-label="Меню" aria-expanded="false"><span></span></button>
@@ -371,9 +429,10 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
   <a href="#why"><small>01</small>Почему к нам</a>
   <a href="#menu"><small>02</small>Меню</a>
   <a href="#dogs"><small>03</small>Наши собаки</a>
-  <a href="#booking"><small>04</small>Бронь столика</a>
-  <a href="#order"><small>05</small>С собой и доставка</a>
-  <a href="#find"><small>06</small>Как добраться</a>
+  <a href="#events"><small>04</small>Мероприятия</a>
+  <a href="#booking"><small>05</small>Бронь столика</a>
+  <a href="#order"><small>06</small>С собой и доставка</a>
+  <a href="#find"><small>07</small>Как добраться</a>
   <a class="btn btn--main" href="#booking">Забронировать столик</a>
 </nav>
 
@@ -504,12 +563,62 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
   <div class="wrap"><p class="disclaimer"><svg width="16" height="16" fill="currentColor"><use href="#info"/></svg>Фото с фотостока — не собаки кофейни. Заменим на настоящие.</p></div>
 </section>
 
+<!-- ================= EVENTS (новое после согласования, на одобрение) ================= -->
+<section class="sec events" id="events">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><span class="num rv">04 — мероприятия</span>
+      <h2 class="rv rv-d1">Приходите <em>на&nbsp;встречу</em></h2></div>
+      <p class="rv rv-d2">Встречи собаководов, мастер-классы и дни рождения собак. Выберите событие и запишитесь — места ограничены.</p>
+    </div>
+    <div class="ev__grid">
+      <article class="ev ev--main rv" data-ev="Встреча собаководов" data-when="Сб, 24 октября · 12:00" data-img="img/guest-with-dog.jpg">
+        <div class="ev__img curtain"><img src="img/guest-with-dog.jpg" alt="Гостья со своей собакой за столиком (фото для примера)" loading="lazy"><span class="ev__date"><b>24</b><small>окт, сб</small></span><span class="ev__type">встреча</span></div>
+        <div class="ev__cut" aria-hidden="true"></div>
+        <div class="ev__body">
+          <div class="ev__meta"><span><svg><use href="#clock"/></svg>12:00–14:00</span><span><svg><use href="#paw"/></svg>можно со своей собакой</span></div>
+          <h3>Встреча собаководов</h3>
+          <p>Знакомимся, болтаем о питомцах за кофе, собаки играют в зале. <span class="todo">[УТОЧНИТЬ: программа и цена]</span></p>
+          <div class="ev__foot"><div class="seats">осталось 8 из 15 мест<i style="--fill:47%"></i></div><button class="btn btn--main js-signup" type="button">Записаться<svg><use href="#arrow"/></svg></button></div>
+        </div>
+      </article>
+      <article class="ev rv rv-d1" data-ev="Мастер-класс: латте-арт" data-when="Чт, 29 октября · 19:00" data-img="img/latte-glass.jpg">
+        <div class="ev__img curtain"><img src="img/latte-glass.jpg" alt="Латте в стеклянной чашке (фото для примера)" loading="lazy"><span class="ev__date"><b>29</b><small>окт, чт</small></span><span class="ev__type">мастер-класс</span></div>
+        <div class="ev__cut" aria-hidden="true"></div>
+        <div class="ev__body">
+          <div class="ev__meta"><span><svg><use href="#clock"/></svg>19:00–20:30</span></div>
+          <h3>Латте-арт: рисуем на пенке</h3>
+          <p>Бариста покажет, как нарисовать сердце и мордочку собаки. <span class="todo">[УТОЧНИТЬ: цена]</span></p>
+          <div class="ev__foot"><div class="seats">осталось 3 из 10 мест<i style="--fill:70%"></i></div><button class="btn btn--main js-signup" type="button">Записаться</button></div>
+        </div>
+      </article>
+      <article class="ev ev--full rv rv-d2" data-ev="День рождения собаки" data-when="Вс, 1 ноября · 15:00" data-img="img/dog-red.jpg">
+        <div class="ev__img curtain"><img src="img/dog-red.jpg" alt="Собака в красном свитере (фото для примера)" loading="lazy"><span class="ev__date"><b>1</b><small>ноя, вс</small></span><span class="ev__type">праздник</span></div>
+        <div class="ev__cut" aria-hidden="true"></div>
+        <div class="ev__body">
+          <div class="ev__meta"><span><svg><use href="#clock"/></svg>15:00–17:00</span><span><svg><use href="#paw"/></svg>с собакой</span></div>
+          <h3>День рождения собаки</h3>
+          <p>Торт для собак, колпаки и общее фото. <span class="todo">[УТОЧНИТЬ: чей праздник, условия]</span></p>
+          <div class="ev__foot"><div class="seats">мест нет<i style="--fill:100%"></i></div><button class="btn" type="button" disabled>Мест нет</button></div>
+        </div>
+      </article>
+    </div>
+    <div class="ev__empty">
+      <svg class="big" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="36" fill="#F6D277"/><use href="#cal" x="20" y="20" width="32" height="32" style="color:#2A1A12"/></svg>
+      <h3>Скоро объявим</h3>
+      <p>Готовим встречи собаководов, мастер-классы и праздники для собак. Напишите нам в Telegram — расскажем первыми.</p>
+      <a class="btn btn--ghost" href="https://t.me/ludi_bydte_dobree" target="_blank" rel="noopener">Узнать первыми в Telegram</a>
+    </div>
+    <p class="ev__note"><svg width="16" height="16" fill="currentColor"><use href="#info"/></svg>Мероприятия и фото — для примера. Настоящие вы добавите сами в кабинете.</p>
+  </div>
+</section>
+
 <!-- ================= BOOKING ================= -->
 <section class="sec" id="booking">
   <div class="wrap book__grid">
     <div class="book__aside">
       <div class="sec-head" style="margin-bottom:0">
-        <div><span class="num rv">04 — бронь столика</span>
+        <div><span class="num rv">05 — бронь столика</span>
         <h2 class="rv rv-d1">Займём вам <em>место</em> у&nbsp;собак</h2></div>
       </div>
       <p class="rv rv-d2" style="color:var(--soft);font-size:17px">Оставьте заявку — перезвоним и подтвердим бронь. Отметьте, если придёте с собакой: подготовим место.</p>
@@ -546,7 +655,7 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
 <section class="sec order" id="order">
   <div class="wrap">
     <div class="sec-head">
-      <div><span class="num rv">05 — с собой и доставка</span>
+      <div><span class="num rv">06 — с собой и доставка</span>
       <h2 class="rv rv-d1">Кофе <em>с собой</em> или&nbsp;домой</h2></div>
       <p class="rv rv-d2">Соберите заказ — заберёте без очереди или привезём. <span class="todo">[УТОЧНИТЬ: зона и стоимость доставки]</span></p>
     </div>
@@ -574,7 +683,7 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
 <section class="sec" id="find">
   <div class="wrap">
     <div class="sec-head">
-      <div><span class="num rv">06 — как нас найти</span>
+      <div><span class="num rv">07 — как нас найти</span>
       <h2 class="rv rv-d1">Ждём на <em>Сарьяна</em></h2></div>
     </div>
     <div class="find__grid">
@@ -599,7 +708,7 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
 <section class="sec contacts" id="contacts">
   <div class="contacts__bg" aria-hidden="true">гав!</div>
   <div class="wrap" style="position:relative">
-    <span class="num rv">07 — контакты</span>
+    <span class="num rv">08 — контакты</span>
     <h2 class="rv rv-d1">Напишите нам — ответим</h2>
     <p class="rv rv-d2" style="margin:0 auto 26px;max-width:40ch;font-size:17px;opacity:.9">Вопрос про собак, бронь или заказ — пишите в Telegram или на почту.</p>
     <div class="socials rv rv-d3">
@@ -617,7 +726,7 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
         <a class="logo" href="#top"><svg><use href="#logo"/></svg>КофеСобакен</a>
         <p style="margin-top:14px;color:rgba(255,249,241,.65);max-width:32ch">Кофейня с собаками в Ростове-на-Дону. Приходите сами или со своим питомцем.</p>
       </div>
-      <div><h5>Гостям</h5><ul><li><a href="#menu">Меню</a></li><li><a href="#dogs">Наши собаки</a></li><li><a href="#booking">Бронь столика</a></li><li><a href="#order">С собой и доставка</a></li></ul></div>
+      <div><h5>Гостям</h5><ul><li><a href="#menu">Меню</a></li><li><a href="#dogs">Наши собаки</a></li><li><a href="#events">Мероприятия</a></li><li><a href="#booking">Бронь столика</a></li><li><a href="#order">С собой и доставка</a></li></ul></div>
       <div><h5>Адрес</h5><ul><li>ул. Сарьяна, 34</li><li>Ростов-на-Дону</li><li>Ежедневно 9:00–21:00</li></ul></div>
       <div><h5>Связь</h5><ul><li><a href="https://t.me/ludi_bydte_dobree" target="_blank" rel="noopener">Telegram</a></li><li><a href="mailto:vovaoleshko05@mail.ru">vovaoleshko05@mail.ru</a></li></ul></div>
     </div>
@@ -752,6 +861,70 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
   $('#bookAgain').addEventListener('click', () => { form.reset(); dateIn.value = dateIn.min; $('#bookCard').classList.remove('is-sent'); });
 
   addEventListener('scroll', onScroll, { passive: true }); onScroll();
+})();
+</script>
+
+<div class="modal" id="evModal" role="dialog" aria-modal="true" aria-labelledby="evTitle">
+  <div class="modal__box">
+    <button class="modal__x" type="button" aria-label="Закрыть" data-close>×</button>
+    <div class="modal__ev"><img id="evImg" src="" alt=""><div><small id="evWhen"></small><h3 id="evTitle"></h3></div></div>
+    <form class="form" id="evForm" novalidate>
+      <label class="fld"><span>Ваше имя</span><input class="inp" name="name" autocomplete="given-name" placeholder="Анна" required></label>
+      <div class="fld"><span>Как с вами связаться</span>
+        <div class="seg contact-seg"><input type="radio" name="via" id="viaP" value="phone" checked><label for="viaP">Телефон</label><input type="radio" name="via" id="viaT" value="tg"><label for="viaT">Telegram</label></div>
+      </div>
+      <label class="fld"><input class="inp" name="contact" id="evContact" type="tel" inputmode="tel" placeholder="+7 (900) 000-00-00" aria-label="Телефон или Telegram" required></label>
+      <div class="two">
+        <div class="fld"><span>Сколько человек</span><div class="stepper" id="evPeople"><button type="button" aria-label="Меньше" data-d="-1">−</button><output>1</output><button type="button" aria-label="Больше" data-d="1">+</button></div></div>
+        <div class="fld"><span>С собакой?</span>
+          <div class="seg"><input type="radio" name="evdog" id="evDogY" value="yes" checked><label for="evDogY"><svg><use href="#paw"/></svg>Да</label><input type="radio" name="evdog" id="evDogN" value="no"><label for="evDogN">Нет</label></div>
+        </div>
+      </div>
+      <label class="consent"><input type="checkbox" required checked><span>Согласен на обработку персональных данных <span class="todo">[ссылка на политику]</span></span></label>
+      <button class="btn btn--main" type="submit">Записаться<svg><use href="#arrow"/></svg></button>
+    </form>
+    <div class="success" aria-live="polite">
+      <svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#B7C4A2"/><use href="#paw" x="18" y="18" width="36" height="36" fill="#2A1A12"/></svg>
+      <h3>Вы записаны!</h3>
+      <p style="color:var(--soft)">Напомним о встрече накануне. <span class="todo">[УТОЧНИТЬ: как напоминаем]</span><br><small>Это эскиз: отправку подключим на этапе разработки.</small></p>
+      <button class="btn btn--ghost" type="button" data-close>Готово</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  if (/events=empty/.test(location.search + location.hash)) $('#events').classList.add('is-empty');
+  const m = $('#evModal'), f = $('#evForm'), c = $('#evContact');
+  const open = card => {
+    $('#evTitle').textContent = card.dataset.ev; $('#evWhen').textContent = card.dataset.when; $('#evImg').src = card.dataset.img;
+    m.classList.remove('is-sent'); m.classList.add('open'); document.body.style.overflow = 'hidden';
+    setTimeout(() => f.elements.name.focus(), 300);
+  };
+  const close = () => { m.classList.remove('open'); document.body.style.overflow = ''; };
+  $$('.js-signup').forEach(b => b.addEventListener('click', () => open(b.closest('.ev'))));
+  $$('[data-close]', m).forEach(b => b.addEventListener('click', close));
+  m.addEventListener('click', e => { if (e.target === m) close(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  const setVia = () => { const tg = $('#viaT').checked; c.value = ''; c.type = tg ? 'text' : 'tel'; c.inputMode = tg ? 'text' : 'tel'; c.placeholder = tg ? '@ваш_ник' : '+7 (900) 000-00-00'; c.classList.remove('err'); };
+  $$('input[name="via"]').forEach(i => i.addEventListener('change', setVia));
+  c.addEventListener('input', () => {
+    if ($('#viaT').checked) { if (c.value && !c.value.startsWith('@')) c.value = '@' + c.value.replace(/@/g, ''); return; }
+    let v = c.value.replace(/\D/g, ''); if (v.startsWith('8')) v = '7' + v.slice(1); if (!v.startsWith('7')) v = '7' + v; v = v.slice(0, 11);
+    const p = v.slice(1); let s = '+7';
+    if (p.length) s += ' (' + p.slice(0, 3); if (p.length >= 3) s += ')'; if (p.length > 3) s += ' ' + p.slice(3, 6); if (p.length > 6) s += '-' + p.slice(6, 8); if (p.length > 8) s += '-' + p.slice(8, 10);
+    c.value = s;
+  });
+  const out = $('#evPeople output');
+  $$('#evPeople button').forEach(b => b.addEventListener('click', () => { out.value = out.textContent = Math.min(6, Math.max(1, +out.textContent + +b.dataset.d)); }));
+  f.addEventListener('submit', e => {
+    e.preventDefault();
+    const nameBad = !f.elements.name.value.trim();
+    const cBad = $('#viaT').checked ? c.value.replace('@', '').length < 3 : c.value.replace(/\D/g, '').length < 11;
+    f.elements.name.classList.toggle('err', nameBad); c.classList.toggle('err', cBad);
+    if (nameBad || cBad) return;
+    m.classList.add('is-sent'); f.reset(); setVia(); out.textContent = 1;
+  });
 })();
 </script>
 </body>
