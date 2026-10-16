@@ -21,7 +21,8 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{font-family:var(--f-text);background:var(--cream);color:var(--espresso);font-size:16px;line-height:1.55;overflow-x:hidden}
+body{font-family:var(--f-text);background:var(--cream);color:var(--espresso);font-size:16px;line-height:1.55;overflow-x:hidden;overflow-x:clip}
+.menu__grid>*,.book__grid>*,.order__grid>*,.find__grid>*,.hero__grid>*{min-width:0}
 img{display:block;max-width:100%}
 a{color:inherit}
 button,input,select{font:inherit;color:inherit}
@@ -104,6 +105,7 @@ button,input,select{font:inherit;color:inherit}
 @keyframes pawfade{0%{opacity:.35}100%{opacity:0}}
 
 /* ---------- marquee ---------- */
+.marquee-wrap{overflow:hidden;padding:20px 0}
 .marquee{background:var(--tomato);color:var(--milk);transform:rotate(-2deg);margin:26px -20px 10px;padding:14px 0;overflow:hidden;position:relative;z-index:2}
 .marquee__track{display:flex;gap:28px;width:max-content;animation:mq 28s linear infinite;font-family:var(--f-head);font-weight:700;font-size:22px;text-transform:lowercase;white-space:nowrap}
 .marquee__track span{display:flex;align-items:center;gap:28px}
@@ -408,12 +410,12 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
   </div>
 </section>
 
-<div class="marquee" aria-hidden="true">
+<div class="marquee-wrap"><div class="marquee" aria-hidden="true">
   <div class="marquee__track">
     <span>капучино <svg><use href="#paw"/></svg> собаки в зале <svg><use href="#paw"/></svg> раф <svg><use href="#paw"/></svg> можно со своим питомцем <svg><use href="#paw"/></svg> латте <svg><use href="#paw"/></svg> уютно <svg><use href="#paw"/></svg> кофе с собой <svg><use href="#paw"/></svg></span>
     <span>капучино <svg><use href="#paw"/></svg> собаки в зале <svg><use href="#paw"/></svg> раф <svg><use href="#paw"/></svg> можно со своим питомцем <svg><use href="#paw"/></svg> латте <svg><use href="#paw"/></svg> уютно <svg><use href="#paw"/></svg> кофе с собой <svg><use href="#paw"/></svg></span>
   </div>
-</div>
+</div></div>
 
 <!-- ================= WHY ================= -->
 <section class="sec" id="why">
@@ -577,7 +579,7 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
     </div>
     <div class="find__grid">
       <div class="map rv">
-        <iframe title="КофеСобакен на карте" loading="lazy" src="https://yandex.ru/map-widget/v1/?text=%D0%A0%D0%BE%D1%81%D1%82%D0%BE%D0%B2-%D0%BD%D0%B0-%D0%94%D0%BE%D0%BD%D1%83%2C%20%D1%83%D0%BB%D0%B8%D1%86%D0%B0%20%D0%A1%D0%B0%D1%80%D1%8C%D1%8F%D0%BD%D0%B0%2C%2034&amp;z=16" allowfullscreen></iframe>
+        <a href="https://yandex.ru/maps/?text=%D0%A0%D0%BE%D1%81%D1%82%D0%BE%D0%B2-%D0%BD%D0%B0-%D0%94%D0%BE%D0%BD%D1%83%2C%20%D1%83%D0%BB%D0%B8%D1%86%D0%B0%20%D0%A1%D0%B0%D1%80%D1%8C%D1%8F%D0%BD%D0%B0%2C%2034" target="_blank" rel="noopener" style="position:absolute;inset:0;display:grid;place-items:center;text-decoration:none;background:radial-gradient(circle at 30% 40%,#F4C9B8 0 18%,transparent 19%),radial-gradient(circle at 70% 65%,#B7C4A2 0 22%,transparent 23%),repeating-linear-gradient(35deg,#FBE9D7 0 22px,#F7EFE4 22px 44px)"><span style="background:var(--milk);border-radius:999px;padding:14px 22px;font-weight:800;display:flex;gap:10px;align-items:center;box-shadow:0 12px 30px -14px rgba(42,26,18,.5)"><svg width="22" height="22" fill="#E4572E"><use href="#pin"/></svg>Открыть на карте — ул. Сарьяна, 34</span></a>
       </div>
       <div class="addr rv rv-d1">
         <p class="addr__big">ул. Сарьяна, 34<br><span style="color:var(--soft);font-size:.6em">Ростов-на-Дону</span></p>
