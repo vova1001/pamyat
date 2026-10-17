@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<style>html,body,#m{margin:0;width:100%;height:100%}
+.pin{display:flex;flex-direction:column;align-items:center;font-family:Arial,sans-serif}
+.tag{background:#E8553A;color:#fff;font-weight:800;font-size:30px;padding:14px 26px;border-radius:40px;box-shadow:0 10px 28px rgba(42,26,18,.45);white-space:nowrap;border:4px solid #fff}
+.tag small{display:block;font-size:20px;font-weight:600;opacity:.95;text-align:center}
+.stem{width:6px;height:34px;background:#E8553A}
+.dot{width:34px;height:34px;border-radius:50%;background:#E8553A;border:6px solid #fff;box-shadow:0 0 0 14px rgba(232,85,58,.25)}
+.maplibregl-ctrl-attrib{display:none}</style></head><body><div id="m"></div><script>
+fetch('https://tiles.openfreemap.org/styles/liberty').then(r=>r.json()).then(st=>{
+ st.layers.forEach(l=>{ if(l.layout&&l.layout['text-field']) l.layout['text-field']=['coalesce',['get','name:ru'],['get','name']];
+   if(l.type==='fill-extrusion') l.paint['fill-extrusion-opacity']=0.55; });
+ const map=new maplibregl.Map({container:'m',style:st,center:[39.77196,47.229234],zoom:16.4,pitch:35,bearing:-10,preserveDrawingBuffer:true,pixelRatio:1,attributionControl:false});
+ const el=document.createElement('div');el.className='pin';el.innerHTML='<div class="tag">КофеСобакен<small>ул. Сарьяна, 34</small></div><div class="stem"></div><div class="dot"></div>';
+
+ map.on('idle',()=>{document.title='ready'});
+});
+</script></body></html>
