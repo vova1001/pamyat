@@ -405,7 +405,7 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
     <div class="login__hello">
       <div class="login__sticker"><img src="img/dog-cafe-table.jpg" alt=""></div>
       <h1>Вход<br>в <em>кабинет</em></h1>
-      <p>Брони, меню, мероприятия<br>и тексты сайта.</p>
+      <p id="loginSub">Брони, меню, мероприятия<br>и тексты сайта.</p>
     </div>
     <form class="card form" id="loginForm" novalidate>
       <label class="fld"><span>Почта</span><input class="inp" name="email" type="email" autocomplete="username" placeholder="you@mail.ru" required></label>
@@ -413,7 +413,20 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
       <button class="btn btn--main" type="submit">Войти</button>
       <p class="forgot">Забыли пароль? <a href="#login" id="forgot">Пришлём ссылку на почту</a></p>
     </form>
-    <p class="login__foot"><svg><use href="#info"/></svg><span>Вход только для владельца кофейни. Сайт для гостей — <a href="index.html">открыть</a>.</span></p>
+    <form class="card form" id="setupForm" novalidate hidden>
+      <p style="color:var(--soft);font-weight:600">Первый вход: придумайте пароль администратора. Его знаете только вы.</p>
+      <label class="fld"><span>Почта администратора</span><input class="inp" name="email" type="email" autocomplete="username" value="vovaoleshko05@mail.ru" required></label>
+      <label class="fld"><span>Пароль — не короче 8 символов</span><input class="inp" name="pass" type="password" autocomplete="new-password" minlength="8" required></label>
+      <label class="fld"><span>Повторите пароль</span><input class="inp" name="pass2" type="password" autocomplete="new-password" required></label>
+      <button class="btn btn--main" type="submit">Создать и войти</button>
+    </form>
+    <form class="card form" id="changeForm" novalidate hidden>
+      <p style="color:var(--soft);font-weight:600">Вы вошли по временному паролю. Придумайте свой — его будете знать только вы.</p>
+      <label class="fld"><span>Новый пароль — не короче 8 символов</span><input class="inp" name="pass" type="password" autocomplete="new-password" minlength="8" required></label>
+      <label class="fld"><span>Повторите пароль</span><input class="inp" name="pass2" type="password" autocomplete="new-password" required></label>
+      <button class="btn btn--main" type="submit">Сохранить и войти</button>
+    </form>
+    <p class="login__foot"><svg><use href="#info"/></svg><span>Вход для администратора и сотрудников кофейни. Сайт для гостей — <a href="index.html">открыть</a>.</span></p>
   </div>
 </div>
 
@@ -427,9 +440,10 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
       <a href="#events" data-s="events"><svg><use href="#star"/></svg>Мероприятия</a>
       <a href="#content" data-s="content"><svg><use href="#image"/></svg>Фото и тексты</a>
       <a href="#notify" data-s="notify"><svg><use href="#bell"/></svg>Уведомления</a>
+      <a href="#staff" data-s="staff"><svg><use href="#users"/></svg>Сотрудники</a>
     </nav>
     <div class="side__foot">
-      <div class="side__card"><b>Сайт работает</b>Изменения видны гостям сразу после «Сохранить».</div>
+      <div class="side__card"><b id="whoName">Сайт работает</b><span id="whoRole">Изменения видны гостям сразу после «Сохранить».</span></div>
       <a href="index.html" target="_blank" rel="noopener"><svg><use href="#ext"/></svg>Открыть сайт</a>
       <button type="button" class="js-logout"><svg><use href="#out"/></svg>Выйти</button>
     </div>
@@ -562,6 +576,20 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
     </section>
 
     <!-- ---------- УВЕДОМЛЕНИЯ ---------- -->
+    <section class="scr" id="s-staff" hidden>
+      <div class="ph"><div><span class="eyebrow">доступ в кабинет</span><h1>Сотрудники</h1><p>Создайте работнику вход: почта и временный пароль. При первом входе он придумает свой. Сотрудник видит брони, заказы, меню и мероприятия; тексты, уведомления и сотрудников — только администратор.</p></div></div>
+      <form class="card form" id="staffForm" novalidate style="margin-bottom:22px;max-width:640px">
+        <div class="two" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+          <label class="fld"><span>Имя</span><input class="inp" name="name" placeholder="Анна, бариста" required></label>
+          <label class="fld"><span>Почта — это логин</span><input class="inp" name="email" type="email" placeholder="anna@mail.ru" required></label>
+          <label class="fld"><span>Временный пароль — не короче 8</span><input class="inp" name="pass" type="text" autocomplete="off" minlength="8" required></label>
+          <label class="fld"><span>Роль</span><select class="inp" name="role"><option value="staff">Сотрудник</option><option value="admin">Администратор</option></select></label>
+        </div>
+        <button class="btn btn--main" type="submit"><svg><use href="#plus"/></svg>Создать вход</button>
+      </form>
+      <div id="staffList"></div>
+    </section>
+
     <section class="scr" id="s-notify" hidden>
       <div class="ph"><div><span class="eyebrow">новые брони и записи</span><h1>Уведомления</h1><p>Куда присылать новые брони столиков и записи на мероприятия.</p></div></div>
       <div class="ngrid">
@@ -602,6 +630,7 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
     <a href="#events" data-s="events"><svg><use href="#star"/></svg>События</a>
     <a href="#content" data-s="content"><svg><use href="#image"/></svg>Фото</a>
     <a href="#notify" data-s="notify"><svg><use href="#bell"/></svg>Уведомл.</a>
+    <a href="#staff" data-s="staff"><svg><use href="#users"/></svg>Команда</a>
   </nav>
 </div>
 <div class="ovl" id="ovl"></div>
@@ -788,17 +817,19 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
 
   /* ---------- вход и разделы ---------- */
   $('#showPass').addEventListener('click', () => { const p = $('#loginForm').pass; p.type = p.type === 'password' ? 'text' : 'password'; });
-  $('#forgot').addEventListener('click', e => { e.preventDefault(); say('Ссылка для входа отправлена на почту'); });
+  $('#forgot').addEventListener('click', e => { e.preventDefault(); say('Попросите администратора сбросить пароль в разделе «Сотрудники»'); });
   $('#loginForm').addEventListener('submit', e => {
     e.preventDefault(); const f = e.target; let bad = false;
     [f.email, f.pass].forEach(i => { const x = !i.value.trim(); i.classList.toggle('err', x); bad = bad || x; });
     if (bad) { say('Введите почту и пароль'); return; }
+    if (window.kofeAuth) { window.kofeAuth.login(f.email.value, f.pass.value); return; }
     location.hash = '#bookings';
   });
-  $$('.js-logout').forEach(b => b.addEventListener('click', () => { location.hash = '#login'; }));
+  $$('.js-logout').forEach(b => b.addEventListener('click', () => { window.kofeAuth?.logout(); location.hash = '#login'; }));
 
   function route() {
-    const [s, sub] = (location.hash.slice(1) || 'login').split('/');
+    let [s, sub] = (location.hash.slice(1) || 'login').split('/');
+    s = window.kofeAuthGate ? window.kofeAuthGate(s) : (window.claude ? 'login' : s);
     const isLogin = s === 'login' || !$('#s-' + s);
     $('#login').hidden = !isLogin; $('#app').hidden = isLogin;
     closeSheet();
@@ -811,6 +842,7 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
   }
   window.kofeAdmin = { BK, MI, EV, say, setDrop, renderBk, renderMi, renderEv, fillMenu, fillEv, sel: () => ({ mSel, eSel, open: !!sheet || desk() }) };
   renderBk(); renderMi(); renderEv(); counters();
+  window.kofeRoute = route;
   addEventListener('hashchange', route); route();
 })();
 </script>
@@ -821,8 +853,6 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
   const db = await claude.use('db'); if (!db) return;
   const A = window.kofeAdmin; if (!A) return;
   const assets = await claude.use('assets');
-  const user = await claude.use('user');
-  if (user && (user.isOwner() || user.canEdit()) && /^#?(login)?$/.test(location.hash)) location.hash = '#bookings';
   const C = 'site/content', G = 'guest/inbox';
   const clean = o => { const r = {}; Object.keys(o).forEach(k => { if (k !== 'id' && k !== 'who' && o[k] !== undefined) r[k] = o[k]; }); return r; };
   const fail = () => A.say('Не удалось сохранить — попробуйте ещё раз');
@@ -865,6 +895,92 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
     }).sort((a, b) => b.at.localeCompare(a.at));
     swap(A.BK, rows); A.renderBk();
   }, () => {});
+})();
+</script>
+<script>
+/* Вход: администратор и сотрудники. Пароли хранятся только в виде стойкого хэша. */
+(async () => {
+  if (!window.claude?.use) return;
+  const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const say = m => window.kofeAdmin?.say(m);
+  const db = await claude.use('db');
+  if (!db) { window.kofeAuthGate = () => 'login'; window.kofeRoute?.(); say('Кабинет сейчас недоступен — обновите страницу'); return; }
+  const U = 'site/staff/users', ADMIN_ONLY = ['content', 'notify', 'staff'];
+  const enc = new TextEncoder(), hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+  const hash = async (pass, salt) => { const k = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveBits']);
+    return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(salt), iterations: 150000, hash: 'SHA-256' }, k, 256)); };
+  const salt = () => hex(crypto.getRandomValues(new Uint8Array(16)));
+  const norm = e => String(e || '').trim().toLowerCase();
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let users = [], me = null, ready = false, fails = 0, lockUntil = 0;
+  const loadMe = () => { try { const x = JSON.parse(sessionStorage.getItem('kofe-sess') || 'null'); if (x && x.exp > Date.now()) return x; } catch {} return null; };
+  let sess = loadMe();
+  const saveSess = u => { sess = { id: u.id, exp: Date.now() + 12 * 3600e3 }; try { sessionStorage.setItem('kofe-sess', JSON.stringify(sess)); } catch {} };
+  const forms = which => { $('#loginForm').hidden = which !== 'login'; $('#setupForm').hidden = which !== 'setup'; $('#changeForm').hidden = which !== 'change'; };
+  window.kofeAuthGate = s => {
+    if (!ready) return 'login';
+    me = sess && users.find(u => u.id === sess.id && u.active !== false) || null;
+    if (!users.some(u => u.role === 'admin')) { forms('setup'); $('#loginSub').textContent = 'Создайте вход администратора.'; return 'login'; }
+    if (!me) { sess = null; forms('login'); $('#loginSub').innerHTML = 'Брони, меню, мероприятия<br>и тексты сайта.'; return 'login'; }
+    if (me.mustChange) { forms('change'); $('#loginSub').textContent = 'Придумайте свой пароль.'; return 'login'; }
+    $$('[data-s="content"],[data-s="notify"],[data-s="staff"]').forEach(a => a.style.display = me.role === 'admin' ? '' : 'none');
+    $('#whoName').textContent = me.name || me.email; $('#whoRole').textContent = me.role === 'admin' ? 'администратор' : 'сотрудник';
+    if (s === 'login' || (ADMIN_ONLY.includes(s) && me.role !== 'admin')) { history.replaceState(null, '', '#bookings'); return 'bookings'; }
+    return s;
+  };
+  window.kofeAuth = {
+    async login(email, pass) {
+      if (Date.now() < lockUntil) { say('Слишком много попыток — подождите минуту'); return; }
+      const u = users.find(x => norm(x.email) === norm(email) && x.active !== false);
+      if (!u || await hash(pass, u.salt) !== u.hash) { if (++fails >= 5) { lockUntil = Date.now() + 60e3; fails = 0; } say('Неверная почта или пароль'); return; }
+      fails = 0; saveSess(u); $('#loginForm').reset(); location.hash = '#bookings'; window.kofeRoute();
+    },
+    logout() { sess = null; me = null; try { sessionStorage.removeItem('kofe-sess'); } catch {} },
+  };
+  const pw2 = f => { const a = f.pass.value, b = f.pass2.value; if (a.length < 8) { say('Пароль — не короче 8 символов'); return false; } if (a !== b) { say('Пароли не совпадают'); return false; } return true; };
+  $('#setupForm').addEventListener('submit', async e => {
+    e.preventDefault(); const f = e.target; if (users.some(u => u.role === 'admin')) return;
+    if (!/^\S+@\S+\.\S+$/.test(f.email.value)) { say('Проверьте почту'); return; } if (!pw2(f)) return;
+    const sl = salt(); try {
+      const ref = await db.collection(U).add({ name: 'Владелец', email: norm(f.email.value), role: 'admin', salt: sl, hash: await hash(f.pass.value, sl), active: true, at: new Date().toISOString() });
+      saveSess({ id: ref.id }); f.reset(); say('Готово — вы администратор'); location.hash = '#bookings';
+    } catch { say('Не получилось — попробуйте ещё раз'); }
+  });
+  $('#changeForm').addEventListener('submit', async e => {
+    e.preventDefault(); const f = e.target; if (!me || !pw2(f)) return;
+    const sl = salt(); try { await db.doc(U + '/' + me.id).update({ salt: sl, hash: await hash(f.pass.value, sl), mustChange: false }); f.reset(); say('Пароль сохранён'); location.hash = '#bookings'; }
+    catch { say('Не получилось — попробуйте ещё раз'); }
+  });
+  /* сотрудники */
+  const renderStaff = () => {
+    const box = $('#staffList'); if (!box) return;
+    box.innerHTML = users.length ? users.map(u => `<article class="bk ${u.active === false ? 'bk--no' : ''}">
+      <div class="bk__who"><b>${esc(u.name)}</b><span>${esc(u.email)}</span></div>
+      <div class="bk__info"><span class="pill">${u.role === 'admin' ? 'администратор' : 'сотрудник'}</span>${u.mustChange ? '<span class="pill">ждёт первого входа</span>' : ''}</div>
+      <div class="bk__end"><span class="st ${u.active === false ? 'st--no' : 'st--ok'} bk__st">${u.active === false ? 'отключён' : 'активен'}</span>
+        ${me && u.id !== me.id ? `<div class="bk__acts"><button class="btn btn--soft btn--sm" data-reset="${u.id}">Новый пароль</button><button class="btn btn--soft btn--sm" data-toggle="${u.id}">${u.active === false ? 'Включить' : 'Отключить'}</button></div>` : '<small style="color:var(--soft)">это вы</small>'}
+      </div></article>`).join('') : '<div class="empty"><b>Пока никого</b>Создайте вход первому сотруднику.</div>';
+  };
+  $('#staffForm').addEventListener('submit', async e => {
+    e.preventDefault(); const f = e.target; if (me?.role !== 'admin') return;
+    let bad = false; ['name', 'email', 'pass'].forEach(k => { const x = k === 'pass' ? f.pass.value.length < 8 : k === 'email' ? !/^\S+@\S+\.\S+$/.test(f.email.value) : !f[k].value.trim(); f[k].classList.toggle('err', x); bad = bad || x; });
+    if (bad) { say('Имя, почта и пароль не короче 8 символов'); return; }
+    if (users.some(u => norm(u.email) === norm(f.email.value))) { say('Такая почта уже есть'); return; }
+    const sl = salt(); try {
+      await db.collection(U).add({ name: f.name.value.trim(), email: norm(f.email.value), role: f.role.value, salt: sl, hash: await hash(f.pass.value, sl), active: true, mustChange: true, at: new Date().toISOString() });
+      say(`Вход создан. Передайте сотруднику почту и временный пароль`); f.reset();
+    } catch { say('Не получилось — попробуйте ещё раз'); }
+  });
+  $('#staffList').addEventListener('click', async e => {
+    if (me?.role !== 'admin') return;
+    const t = e.target.closest('[data-toggle]'), r = e.target.closest('[data-reset]');
+    if (t) { const u = users.find(x => x.id === t.dataset.toggle); await db.doc(U + '/' + u.id).update({ active: u.active === false }).catch(() => say('Не получилось')); say(u.active === false ? 'Сотрудник снова может войти' : 'Сотрудник отключён — войти больше не сможет'); }
+    if (r) { const p = prompt('Новый временный пароль (не короче 8 символов). Передайте его сотруднику:'); if (!p) return; if (p.length < 8) { say('Не короче 8 символов'); return; }
+      const sl = salt(); await db.doc(U + '/' + r.dataset.reset).update({ salt: sl, hash: await hash(p, sl), mustChange: true }).catch(() => say('Не получилось')); say('Новый пароль задан — при входе сотрудник сменит его'); }
+  });
+  db.collection(U).onSnapshot(snap => {
+    users = snap.docs.map(d => ({ id: d.id, ...d.data() })); ready = true; window.kofeRoute?.(); renderStaff();
+  }, () => { ready = true; users = []; say('Кабинет сейчас недоступен — обновите страницу'); });
 })();
 </script>
 </body>
