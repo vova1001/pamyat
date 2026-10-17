@@ -22,6 +22,7 @@ type Config struct {
 	UploadDir        string
 	MediaStore       string // где фото: disk (том uploads) или postgres (хостинг без диска)
 	AdminLinkOnStart bool   // новая ссылка входа администратора при каждом старте (забыл пароль, а консоли нет)
+	AdminPassTemp    bool   // ADMIN_PASSWORD временный: при первом входе — обязательная смена
 	Location         *time.Location
 	CookieSecure     bool
 	SeedDemo         bool
@@ -36,9 +37,10 @@ func get(k, def string) string {
 
 func Load() (Config, error) {
 	c := Config{
-		HTTPAddr:         get("HTTP_ADDR", ":8080"),
-		DatabaseURL:      get("DATABASE_URL", ""),
-		PublicURL:        strings.TrimRight(get("PUBLIC_URL", "http://localhost:8000"), "/"),
+		HTTPAddr:    get("HTTP_ADDR", ":8080"),
+		DatabaseURL: get("DATABASE_URL", ""),
+		// На Render адрес сервиса приходит сам (RENDER_EXTERNAL_URL).
+		PublicURL:        strings.TrimRight(get("PUBLIC_URL", get("RENDER_EXTERNAL_URL", "http://localhost:8000")), "/"),
 		WebhookURL:       get("PAYMENT_WEBHOOK_URL", "http://localhost:8080/api/payments/webhook"),
 		AdminEmail:       strings.ToLower(get("ADMIN_EMAIL", "")),
 		AdminPassword:    os.Getenv("ADMIN_PASSWORD"),
@@ -47,6 +49,7 @@ func Load() (Config, error) {
 		UploadDir:        get("UPLOAD_DIR", "/data/uploads"),
 		MediaStore:       get("MEDIA_STORE", "disk"),
 		AdminLinkOnStart: get("ADMIN_LINK_ON_START", "false") == "true",
+		AdminPassTemp:    get("ADMIN_PASSWORD_TEMPORARY", "false") == "true",
 		CookieSecure:     get("COOKIE_SECURE", "false") == "true",
 		SeedDemo:         get("SEED_DEMO", "false") == "true",
 	}

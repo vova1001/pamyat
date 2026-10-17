@@ -202,6 +202,32 @@ func TestLoginSession(t *testing.T) {
 	}
 }
 
+func TestAdminPasswordTemporary(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	e.svc.SetAdminPasswordTemporary(true)
+	if err := e.svc.Bootstrap(ctx, "render@example.com", "generated-by-host-123", false); err != nil {
+		t.Fatal(err)
+	}
+	tok, acc, err := e.svc.Login(ctx, "render@example.com", "generated-by-host-123")
+	if err != nil || !acc.MustChangePassword {
+		t.Fatalf("сгенерированный пароль — временный: %v %+v", err, acc)
+	}
+	if err := e.svc.ChangePassword(ctx, acc, tok, "", "owner-own-1"); err != nil {
+		t.Fatal(err)
+	}
+	// перезапуск с тем же ADMIN_PASSWORD не возвращает временный пароль
+	if err := e.svc.Bootstrap(ctx, "render@example.com", "generated-by-host-123", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := e.svc.Login(ctx, "render@example.com", "generated-by-host-123"); !errors.Is(err, service.ErrBadLogin) {
+		t.Fatal("сгенерированный пароль после смены не действует")
+	}
+	if _, acc, err := e.svc.Login(ctx, "render@example.com", "owner-own-1"); err != nil || acc.MustChangePassword {
+		t.Fatalf("свой пароль: %v %+v", err, acc)
+	}
+}
+
 func TestSetupLink(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()

@@ -15,6 +15,7 @@ import (
 // Повторный запуск ничего не перезаписывает. ADMIN_PASSWORD (если задан) — только первый пароль
 // администратора: свой пароль, сменённый в кабинете, при перезапуске не сбрасывается.
 // Без ADMIN_PASSWORD администратор задаёт пароль сам по одноразовой ссылке (см. PendingSetup).
+// SetAdminPasswordTemporary(true) — пароль из окружения временный: при первом входе — обязательная смена.
 func (s *Service) Bootstrap(ctx context.Context, adminEmail, adminPassword string, seedDemo bool) error {
 	if email := normEmail(adminEmail); email != "" {
 		hash := ""
@@ -27,7 +28,7 @@ func (s *Service) Bootstrap(ctx context.Context, adminEmail, adminPassword strin
 				return err
 			}
 		}
-		if _, err := s.q.EnsureAdmin(ctx, store.EnsureAdminParams{Email: email, PasswordHash: hash}); err != nil {
+		if _, err := s.q.EnsureAdmin(ctx, store.EnsureAdminParams{Email: email, PasswordHash: hash, MustChangePassword: s.adminPassTemp}); err != nil {
 			return err
 		}
 	} else {

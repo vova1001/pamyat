@@ -63,11 +63,16 @@ type Service struct {
 	channels []notify.Channel
 	loc      *time.Location
 	now      func() time.Time
+	// adminPassTemp — ADMIN_PASSWORD временный (сгенерирован хостингом): при первом входе — смена.
+	adminPassTemp bool
 }
 
 func New(db *pgxpool.Pool, pay payments.Provider, channels []notify.Channel, loc *time.Location) *Service {
 	return &Service{db: db, q: store.New(db), pay: pay, channels: channels, loc: loc, now: time.Now}
 }
+
+// SetAdminPasswordTemporary — пароль администратора из окружения считать временным (см. Bootstrap).
+func (s *Service) SetAdminPasswordTemporary(v bool) { s.adminPassTemp = v }
 
 // SetClock — для тестов.
 func (s *Service) SetClock(now func() time.Time) { s.now = now }

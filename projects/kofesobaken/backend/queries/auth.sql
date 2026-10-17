@@ -7,11 +7,13 @@ SELECT * FROM admins WHERE id = $1;
 -- name: GetAdminBySetupToken :one
 SELECT * FROM admins WHERE setup_token_hash = $1 AND setup_expires_at > now();
 
--- Администратор из окружения: создаётся, если его нет; пароль меняется, только если передан.
+-- Администратор из окружения: создаётся, если его нет; пароль меняется, только если передан
+-- (временный — с обязательной сменой при первом входе).
 -- name: EnsureAdmin :one
-INSERT INTO admins (email, password_hash, role, name) VALUES ($1, $2, 'admin', 'Администратор')
+INSERT INTO admins (email, password_hash, role, name, must_change_password) VALUES ($1, $2, 'admin', 'Администратор', $3)
 ON CONFLICT (email) DO UPDATE SET
     role = 'admin', active = TRUE,
+    must_change_password = CASE WHEN EXCLUDED.password_hash <> '' THEN EXCLUDED.must_change_password ELSE admins.must_change_password END,
     password_hash = CASE WHEN EXCLUDED.password_hash <> '' THEN EXCLUDED.password_hash ELSE admins.password_hash END
 RETURNING *;
 

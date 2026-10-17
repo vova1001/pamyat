@@ -69,21 +69,24 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash string) error {
 }
 
 const ensureAdmin = `-- name: EnsureAdmin :one
-INSERT INTO admins (email, password_hash, role, name) VALUES ($1, $2, 'admin', 'Администратор')
+INSERT INTO admins (email, password_hash, role, name, must_change_password) VALUES ($1, $2, 'admin', 'Администратор', $3)
 ON CONFLICT (email) DO UPDATE SET
     role = 'admin', active = TRUE,
+    must_change_password = CASE WHEN EXCLUDED.password_hash <> '' THEN EXCLUDED.must_change_password ELSE admins.must_change_password END,
     password_hash = CASE WHEN EXCLUDED.password_hash <> '' THEN EXCLUDED.password_hash ELSE admins.password_hash END
 RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at
 `
 
 type EnsureAdminParams struct {
-	Email        string `json:"email"`
-	PasswordHash string `json:"password_hash"`
+	Email              string `json:"email"`
+	PasswordHash       string `json:"password_hash"`
+	MustChangePassword bool   `json:"must_change_password"`
 }
 
-// Администратор из окружения: создаётся, если его нет; пароль меняется, только если передан.
+// Администратор из окружения: создаётся, если его нет; пароль меняется, только если передан
+// (временный — с обязательной сменой при первом входе).
 func (q *Queries) EnsureAdmin(ctx context.Context, arg EnsureAdminParams) (Admin, error) {
-	row := q.db.QueryRow(ctx, ensureAdmin, arg.Email, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, ensureAdmin, arg.Email, arg.PasswordHash, arg.MustChangePassword)
 	var i Admin
 	err := row.Scan(
 		&i.ID,

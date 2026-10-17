@@ -56,6 +56,7 @@ func run() error {
 	pay := payments.NewTestProvider(cfg.PublicURL, cfg.WebhookURL, cfg.WebhookSecret)
 	channels := []notify.Channel{notify.LogChannel{Channel_: "email"}, notify.LogChannel{Channel_: "telegram"}}
 	svc := service.New(pool, pay, channels, cfg.Location)
+	svc.SetAdminPasswordTemporary(cfg.AdminPassTemp)
 	if err := svc.Bootstrap(ctx, cfg.AdminEmail, cfg.AdminPassword, cfg.SeedDemo); err != nil {
 		return err
 	}
