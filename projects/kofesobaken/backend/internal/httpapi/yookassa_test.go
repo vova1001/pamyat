@@ -60,7 +60,7 @@ func (s *yk) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		id := "yk-" + uuid.NewString()
 		p := map[string]any{"id": id, "status": "pending", "amount": in["amount"], "metadata": in["metadata"],
-			"return_url": in["confirmation"].(map[string]any)["return_url"],
+			"return_url":   in["confirmation"].(map[string]any)["return_url"],
 			"confirmation": map[string]any{"type": "redirect", "confirmation_url": "https://yoomoney.test/checkout/" + id}}
 		s.payments[id], s.idem[key] = p, id
 		reply(p)
