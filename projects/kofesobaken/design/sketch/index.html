@@ -256,8 +256,38 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
 
 /* ---------- find ---------- */
 .find__grid{display:grid;gap:18px}
-.map{border-radius:var(--r-lg);overflow:hidden;min-height:340px;background:var(--foam);position:relative}
-.map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;filter:sepia(.25) saturate(.9)}
+.map{border-radius:var(--r-lg);overflow:hidden;min-height:440px;background:var(--foam);position:relative;isolation:isolate}
+.map__shot{position:absolute;inset:0;display:block}
+.map__shot img{width:100%;height:100%;object-fit:cover;object-position:50% 50%;display:block}
+.map .map__live{position:absolute;inset:0;opacity:0;transition:opacity 1.2s var(--ease)}
+.map.is-live .map__live{opacity:1}
+.map::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;box-shadow:inset 0 0 0 1px var(--line),inset 0 -90px 80px -60px rgba(42,26,18,.28);z-index:3}
+.map:not(.is-live) .mpin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:2}
+.mpin{width:58px;height:74px;cursor:pointer}
+.mpin__head{position:absolute;left:4px;top:0;width:50px;height:50px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--tomato);box-shadow:0 0 0 4px var(--milk),0 18px 26px -8px rgba(42,26,18,.55);display:grid;place-items:center;animation:mpinBob 3.2s ease-in-out infinite}
+.mpin__head svg{width:26px;height:26px;fill:var(--milk);transform:rotate(45deg)}
+.mpin__dot{position:absolute;left:50%;bottom:0;width:14px;height:6px;margin-left:-7px;border-radius:50%;background:rgba(42,26,18,.35)}
+.mpin__dot::before,.mpin__dot::after{content:"";position:absolute;left:50%;top:50%;width:70px;height:30px;margin:-15px 0 0 -35px;border-radius:50%;border:2px solid var(--tomato);opacity:0;animation:mpinPulse 2.6s ease-out infinite}
+.mpin__dot::after{animation-delay:1.3s}
+.mpin__tag{position:absolute;left:64px;top:4px;background:var(--milk);border-radius:16px;padding:9px 14px 10px;white-space:nowrap;box-shadow:0 14px 30px -14px rgba(42,26,18,.55);line-height:1.15}
+.mpin__tag b{display:block;font-family:var(--f-head);font-weight:800;font-size:14px;letter-spacing:-.02em}
+.mpin__tag span{font-size:12px;font-weight:700;color:var(--soft)}
+@keyframes mpinBob{50%{translate:0 -6px}}
+@keyframes mpinPulse{0%{transform:scale(.2);opacity:.9}100%{transform:scale(1);opacity:0}}
+.map__route{position:absolute;left:16px;bottom:16px;z-index:4;min-height:48px;padding:0 20px;font-size:15px}
+.map__hint{position:absolute;left:16px;top:16px;z-index:4;background:rgba(255,249,241,.92);backdrop-filter:blur(6px);border-radius:999px;padding:8px 14px;font-size:12px;font-weight:800;display:none;align-items:center;gap:8px;pointer-events:none}
+.map__hint svg{width:16px;height:16px;fill:var(--tomato)}
+.map.is-live .map__hint{display:flex}
+.map__copy{position:absolute;right:10px;bottom:8px;z-index:4;font-size:10px;font-weight:600;color:rgba(42,26,18,.6)}
+.map.is-live .map__copy{display:none}
+.map .maplibregl-ctrl-group{background:var(--milk);border-radius:16px;box-shadow:0 10px 24px -12px rgba(42,26,18,.5);overflow:hidden}
+.map .maplibregl-ctrl-group button{width:38px;height:38px}
+.map .maplibregl-ctrl-top-right{top:6px;right:6px}
+.map .maplibregl-ctrl-attrib{background:rgba(255,249,241,.8);font-size:10px;border-radius:999px 0 0 0}
+.map .maplibregl-ctrl-bottom-right{z-index:4}
+.map .maplibregl-cooperative-gesture-screen{font-family:var(--f-text);font-weight:700;background:rgba(42,26,18,.55)}
+@media (max-width:759px){.mpin__tag{left:50%;top:-58px;transform:translateX(-50%);text-align:center;padding:8px 14px 9px}.map__route{min-height:44px;padding:0 16px;font-size:14px}.map .maplibregl-ctrl-attrib.maplibregl-compact{margin:0 8px 8px 0}.map__copy{top:10px;right:14px;bottom:auto}}
+@media (prefers-reduced-motion:reduce){.mpin__head,.mpin__dot::before,.mpin__dot::after{animation:none}}
 .addr{background:var(--milk);border-radius:var(--r-lg);padding:26px;display:flex;flex-direction:column;gap:18px}
 .addr__big{font-family:var(--f-head);font-weight:800;font-size:28px;line-height:1.1;letter-spacing:-.03em}
 .addr dl{display:grid;gap:12px}
@@ -330,7 +360,9 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
   .card{padding:36px}
   .order__grid{grid-template-columns:1fr 1fr;gap:40px;align-items:stretch}
   .find__grid{grid-template-columns:1.4fr 1fr}
-  .map{min-height:560px}
+  .map{min-height:600px}
+  .map__route{left:24px;bottom:24px}
+  .map__hint{left:24px;top:24px}
   .ftr{padding-bottom:56px}
   .ftr__grid{grid-template-columns:1.5fr 1fr 1fr 1fr}
   .ftr__bottom{flex-direction:row;justify-content:space-between}
@@ -691,9 +723,13 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
       <h2 class="rv rv-d1">Ждём на <em>Сарьяна</em></h2></div>
     </div>
     <div class="find__grid">
-      <div class="map rv">
-        <a href="https://yandex.ru/maps/?text=%D0%A0%D0%BE%D1%81%D1%82%D0%BE%D0%B2-%D0%BD%D0%B0-%D0%94%D0%BE%D0%BD%D1%83%2C%20%D1%83%D0%BB%D0%B8%D1%86%D0%B0%20%D0%A1%D0%B0%D1%80%D1%8C%D1%8F%D0%BD%D0%B0%2C%2034" target="_blank" rel="noopener" style="position:absolute;inset:0;display:grid;place-items:center;text-decoration:none;background:radial-gradient(circle at 30% 40%,#F4C9B8 0 18%,transparent 19%),radial-gradient(circle at 70% 65%,#B7C4A2 0 22%,transparent 23%),repeating-linear-gradient(35deg,#FBE9D7 0 22px,#F7EFE4 22px 44px)"><span style="background:var(--milk);border-radius:999px;padding:14px 22px;font-weight:800;display:flex;gap:10px;align-items:center;box-shadow:0 12px 30px -14px rgba(42,26,18,.5)"><svg width="22" height="22" fill="#E4572E"><use href="#pin"/></svg>Открыть на карте — ул. Сарьяна, 34</span></a>
-        <iframe title="КофеСобакен на карте: Ростов-на-Дону, ул. Сарьяна, 34" loading="lazy" src="https://yandex.ru/map-widget/v1/?text=%D0%A0%D0%BE%D1%81%D1%82%D0%BE%D0%B2-%D0%BD%D0%B0-%D0%94%D0%BE%D0%BD%D1%83%2C%20%D1%83%D0%BB%D0%B8%D1%86%D0%B0%20%D0%A1%D0%B0%D1%80%D1%8C%D1%8F%D0%BD%D0%B0%2C%2034&amp;z=16" allowfullscreen></iframe>
+      <div class="map rv" id="map3d">
+        <a class="map__shot" href="https://yandex.ru/maps/?rtext=~47.229234%2C39.771960&amp;rtt=auto" target="_blank" rel="noopener" aria-label="Открыть маршрут в Яндекс.Картах"><img src="img/map-3d.jpg" width="2800" height="2000" alt="Объёмная карта: КофеСобакен на улице Сарьяна, 34, Нахичевань, Ростов-на-Дону" loading="lazy"></a>
+        <div class="map__live" aria-label="Интерактивная 3D-карта: Ростов-на-Дону, ул. Сарьяна, 34"></div>
+        <div class="mpin" aria-hidden="true"><div class="mpin__tag"><b>КофеСобакен</b><span>ул. Сарьяна, 34</span></div><span class="mpin__head"><svg><use href="#paw"/></svg></span><i class="mpin__dot"></i></div>
+        <span class="map__hint"><svg><use href="#paw"/></svg>Покрутите карту</span>
+        <a class="btn btn--main map__route" href="https://yandex.ru/maps/?rtext=~47.229234%2C39.771960&amp;rtt=auto" target="_blank" rel="noopener"><svg><use href="#pin"/></svg>Построить маршрут</a>
+        <span class="map__copy">© OpenStreetMap, OpenFreeMap</span>
       </div>
       <div class="addr rv rv-d1">
         <p class="addr__big">ул. Сарьяна, 34<br><span style="color:var(--soft);font-size:.6em">Ростов-на-Дону</span></p>
@@ -929,6 +965,88 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
     if (nameBad || cBad) return;
     m.classList.add('is-sent'); f.reset(); setVia(); out.textContent = 1;
   });
+})();
+</script>
+<script>
+/* ---------- 3D-карта: MapLibre GL + OpenFreeMap; без сети/WebGL остаётся снимок img/map-3d.jpg ---------- */
+(() => {
+  const box = document.getElementById('map3d'); if (!box) return;
+  const CAFE = [39.771960, 47.229234];
+  const LIB = 'https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl';
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const C = { land:'#F5ECDF', block:'#F1E4D3', park:'#D3DCBF', wood:'#C3CFA9', water:'#C9D9D3', road:'#FFFBF5', casing:'#E6D3BE', minor:'#FFF9F1', rail:'#D2BFAA', label:'#6B5446', halo:'#FFF9F1', bLow:'#F8EDE0', bMid:'#F0DCC6', bHigh:'#E3C2A2', cafe:'#E4572E' };
+  const name = ['coalesce', ['get', 'name:ru'], ['get', 'name']];
+  const W = (a, b) => ['interpolate', ['exponential', 1.6], ['zoom'], 13, a, 18, b];
+  const cls = (...c) => ['match', ['get', 'class'], c, true, false];
+  const style = {
+    version: 8,
+    glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+    sources: {
+      omt: { type: 'vector', url: 'https://tiles.openfreemap.org/planet', attribution: '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>' },
+      cafe: { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[39.7718525,47.229267],[39.7718907,47.2291595],[39.77198,47.2291742],[39.7719758,47.2291861],[39.772068,47.2292013],[39.772034,47.2292968],[39.7718525,47.229267]]] } } }
+    },
+    sky: { 'sky-color': '#F6E3CF', 'horizon-color': '#F7EFE4', 'fog-color': '#F7EFE4', 'sky-horizon-blend': .6, 'horizon-fog-blend': .7, 'fog-ground-blend': .55, 'atmosphere-blend': 0 },
+    light: { anchor: 'viewport', color: '#FFF1DE', intensity: .45, position: [1.3, 200, 40] },
+    layers: [
+      { id: 'bg', type: 'background', paint: { 'background-color': C.land } },
+      { id: 'landuse', type: 'fill', source: 'omt', 'source-layer': 'landuse', filter: cls('residential', 'suburb', 'neighbourhood', 'commercial', 'retail'), paint: { 'fill-color': C.block, 'fill-opacity': .7 } },
+      { id: 'park', type: 'fill', source: 'omt', 'source-layer': 'park', paint: { 'fill-color': C.park } },
+      { id: 'green', type: 'fill', source: 'omt', 'source-layer': 'landcover', filter: cls('grass', 'wood', 'farmland', 'wetland'), paint: { 'fill-color': ['match', ['get', 'class'], 'wood', C.wood, C.park], 'fill-opacity': .85 } },
+      { id: 'water', type: 'fill', source: 'omt', 'source-layer': 'water', paint: { 'fill-color': C.water } },
+      { id: 'rail', type: 'line', source: 'omt', 'source-layer': 'transportation', filter: cls('rail', 'transit'), paint: { 'line-color': C.rail, 'line-width': W(.6, 2.4), 'line-dasharray': [3, 2] } },
+      { id: 'road-case', type: 'line', source: 'omt', 'source-layer': 'transportation', filter: cls('motorway', 'trunk', 'primary', 'secondary', 'tertiary'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.casing, 'line-width': W(3, 30) } },
+      { id: 'road-minor', type: 'line', source: 'omt', 'source-layer': 'transportation', filter: cls('minor', 'service', 'track', 'path', 'pedestrian'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.minor, 'line-width': ['interpolate', ['exponential', 1.6], ['zoom'], 13, ['match', ['get', 'class'], ['path', 'track'], .4, 'service', .6, 1], 18, ['match', ['get', 'class'], ['path', 'track'], 3, 'service', 7, 14]] } },
+      { id: 'road', type: 'line', source: 'omt', 'source-layer': 'transportation', filter: cls('motorway', 'trunk', 'primary', 'secondary', 'tertiary'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.road, 'line-width': W(2, 25) } },
+      { id: 'buildings', type: 'fill-extrusion', source: 'omt', 'source-layer': 'building', minzoom: 14, paint: {
+        'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 0, C.bLow, 14, C.bMid, 40, C.bHigh],
+        'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 15.2, ['coalesce', ['get', 'render_height'], 6]],
+        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0], 'fill-extrusion-opacity': .94, 'fill-extrusion-vertical-gradient': true } },
+      { id: 'cafe', type: 'fill-extrusion', source: 'cafe', paint: { 'fill-extrusion-color': C.cafe, 'fill-extrusion-height': 6.5, 'fill-extrusion-opacity': 1 } },
+      { id: 'street-names', type: 'symbol', source: 'omt', 'source-layer': 'transportation_name', minzoom: 14, layout: { 'symbol-placement': 'line', 'text-field': name, 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 14, 10, 18, 14], 'text-letter-spacing': .04, 'text-max-angle': 30 }, paint: { 'text-color': C.label, 'text-halo-color': C.halo, 'text-halo-width': 1.6 } },
+      { id: 'places', type: 'symbol', source: 'omt', 'source-layer': 'place', filter: cls('suburb', 'neighbourhood', 'quarter'), layout: { 'text-field': name, 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-transform': 'uppercase', 'text-letter-spacing': .18 }, paint: { 'text-color': 'rgba(107,62,38,.55)', 'text-halo-color': C.halo, 'text-halo-width': 1.4 } }
+    ]
+  };
+  const view = () => innerWidth < 760 ? { center: CAFE, zoom: 16.25, pitch: 58, bearing: -28 } : { center: CAFE, zoom: 16.6, pitch: 62, bearing: -28 };
+
+  let started = false;
+  const start = () => {
+    if (started) return; started = true;
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = LIB + '.css'; document.head.appendChild(css);
+    const js = document.createElement('script'); js.src = LIB + '.js'; js.async = true;
+    js.onload = init; js.onerror = () => {}; // нет сети — остаётся снимок
+    document.head.appendChild(js);
+  };
+  function init() {
+    const ml = window.maplibregl; if (!ml) return;
+    let map;
+    try {
+      map = new ml.Map({ container: box.querySelector('.map__live'), style, ...view(), maxPitch: 70, minZoom: 13, maxZoom: 19, attributionControl: { compact: true }, cooperativeGestures: true, scrollZoom: false, fadeDuration: 0,
+        locale: { 'CooperativeGesturesHandler.WindowsHelpText': 'Ctrl + колесо мыши — приблизить карту', 'CooperativeGesturesHandler.MacHelpText': '⌘ + колесо мыши — приблизить карту', 'CooperativeGesturesHandler.MobileHelpText': 'Двигайте карту двумя пальцами', 'NavigationControl.ZoomIn': 'Приблизить', 'NavigationControl.ZoomOut': 'Отдалить', 'NavigationControl.ResetBearing': 'Вернуть север' } });
+    } catch (e) { return; } // нет WebGL — остаётся снимок
+    window.kofeMap = map;
+    map.addControl(new ml.NavigationControl({ visualizePitch: true }), 'top-right');
+    map.on('error', e => console.warn('map3d:', e.error && e.error.message));
+    map.once('idle', () => {
+      box.classList.add('is-live');
+      new ml.Marker({ element: box.querySelector('.mpin'), anchor: 'bottom' }).setLngLat(CAFE).addTo(map);
+      box.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show'); // свернуть подпись, чтобы не налезала на кнопку
+      orbit(map);
+    });
+  }
+  // медленный облёт вокруг кофейни; пауза при касании и вне экрана
+  function orbit(map) {
+    if (reduce) return;
+    let on = true, seen = true, last = 0, wait;
+    const step = t => { if (on && seen && last) map.setBearing((map.getBearing() + (t - last) * 0.003) % 360); last = t; requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+    const pause = () => { on = false; clearTimeout(wait); wait = setTimeout(() => { on = true; }, 7000); };
+    ['mousedown', 'touchstart', 'wheel'].forEach(ev => map.getCanvasContainer().addEventListener(ev, pause, { passive: true }));
+    new IntersectionObserver(([e]) => { seen = e.isIntersecting; }).observe(box);
+  }
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { io.disconnect(); start(); } }, { rootMargin: '900px 0px' });
+    io.observe(box);
+  } else start();
 })();
 </script>
 </body>
