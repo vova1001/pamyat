@@ -173,6 +173,28 @@ paths:
         "410": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
 
+  /admin/forgot:
+    post:
+      tags: [admin]
+      summary: «Забыли пароль?» — письмо со ссылкой /admin#setup/<token> (1 час, одноразовая), если почта настроена (RESEND_API_KEY)
+      description: Ответ одинаковый, есть такая почта или нет. mail=false — почта не настроена, пароль сбрасывает администратор.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, required: [mail], properties: { mail: { type: boolean } } } } } }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /call/{phone}:
+    get:
+      tags: [public]
+      summary: "Кнопка «Позвонить» в Telegram — перенаправление на tel:<phone> (Telegram не принимает tel-ссылки в кнопках)"
+      parameters:
+        - { name: phone, in: path, required: true, schema: { type: string, pattern: '^\+?[0-9]{5,15}$' } }
+      responses:
+        "302": { description: "Location: tel:<phone>" }
+        "404": { $ref: "#/components/responses/Error" }
+
   /admin/staff:
     get:
       tags: [admin]
@@ -379,7 +401,18 @@ paths:
   /admin/telegram/connect:
     post:
       tags: [admin]
-      summary: Подключить Telegram (сейчас заглушка — подключает и шлёт проверочное сообщение в журнал)
+      summary: Подключить Telegram
+      description: |
+        С ботом (TELEGRAM_BOT_TOKEN) — ссылка telegram_link (t.me/<бот>?start=<код>, 30 минут); владелица жмёт «Старт»,
+        кабинет опрашивает /admin/telegram/check. Без бота — заглушка: подключает сразу, проверка — в журнал.
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TelegramConnect" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/telegram/check:
+    post:
+      tags: [admin]
+      summary: Нажата ли «Старт» по ссылке подключения; если да — чат подключён и уходит проверочное сообщение
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } } }
         "403": { $ref: "#/components/responses/Error" }
@@ -540,6 +573,12 @@ components:
         delivery_radius_km: { type: integer, minimum: 1, maximum: 50 }
         booking_prepay_kop: { type: integer, format: int64, description: "предоплата брони (только чтение)" }
         notify: { $ref: "#/components/schemas/NotifySettings" }
+    TelegramConnect:
+      allOf:
+        - $ref: "#/components/schemas/Settings"
+        - type: object
+          properties:
+            telegram_link: { type: string, description: "ссылка на бота; нет — бот не настроен (подключено заглушкой)" }
     NotifySettings:
       type: object
       required: [email_enabled, email, telegram_connected, telegram_chat, on_booking, on_signup, on_full, on_order]
@@ -548,6 +587,7 @@ components:
         email: { type: string }
         telegram_connected: { type: boolean }
         telegram_chat: { type: string, example: "@ludi_bydte_dobree" }
+        telegram_chat_id: { type: string, description: "chat_id подключённого чата (только чтение)" }
         on_booking: { type: boolean }
         on_signup: { type: boolean }
         on_full: { type: boolean }

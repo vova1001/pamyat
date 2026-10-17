@@ -352,8 +352,27 @@ async function loadNotes() {
 $$<HTMLButtonElement>('.js-test').forEach(b => b.addEventListener('click', async () => {
   try { await api('/admin/notify/test', { body: { channel: b.dataset.ch } }); say('Проверочное письмо отправлено'); loadNotes(); } catch (err) { oops(err); }
 }));
+// Подключение Telegram: ссылка на бота со «Старт»; пока владелица жмёт «Старт», раз в 3 секунды спрашиваем сервер.
+// Без бота на сервере (заглушка) ссылки нет — подключено сразу.
+let tgWait = 0;
+const tgDone = (s: Settings) => { clearInterval(tgWait); ST = s; fillNotify(); say('Telegram подключён — проверочное сообщение отправлено'); loadNotes(); };
+function waitTg() {
+  clearInterval(tgWait);
+  const until = Date.now() + 10 * 60_000;
+  tgWait = window.setInterval(async () => {
+    if (Date.now() > until) { clearInterval(tgWait); say('Не дождались «Старт» в Telegram — нажмите «Подключить Telegram» ещё раз'); return; }
+    try { const s = await api<Settings>('/admin/telegram/check', { method: 'POST' }); if (s.notify.telegram_connected) tgDone(s); } catch { /* следующая попытка */ }
+  }, 3000);
+}
 $('#tgConnect').addEventListener('click', async () => {
-  try { ST = await api<Settings>('/admin/telegram/connect', { method: 'POST' }); fillNotify(); say('Telegram подключён — проверочное сообщение отправлено'); loadNotes(); } catch (err) { oops(err); }
+  const win = window.open('', '_blank'); // окно — сразу по нажатию, иначе браузер его заблокирует
+  try {
+    const r = await api<Settings & { telegram_link?: string }>('/admin/telegram/connect', { method: 'POST' });
+    if (!r.telegram_link) { win?.close(); tgDone(r); return; }
+    if (win) { win.opener = null; win.location.href = r.telegram_link; } else location.href = r.telegram_link;
+    say('В Telegram нажмите «Старт» — подождём здесь');
+    waitTg();
+  } catch (err) { win?.close(); oops(err); }
 });
 $('#tgOff').addEventListener('click', async () => {
   try { ST = await api<Settings>('/admin/telegram/disconnect', { method: 'POST' }); fillNotify(); say('Telegram отключён'); } catch (err) { oops(err); }
@@ -439,7 +458,15 @@ function pw2(f: HTMLFormElement) {
 function entered(m: Me) { me = m; applyRole(); if (!m.must_change_password) { loadBk(); loadOr(); } }
 
 $('#showPass').addEventListener('click', () => { const p = lf('pass'); p.type = p.type === 'password' ? 'text' : 'password'; });
-$('#forgot').addEventListener('click', e => { e.preventDefault(); say('Попросите администратора сбросить пароль в разделе «Сотрудники»'); });
+$('#forgot').addEventListener('click', async e => {
+  e.preventDefault();
+  const email = lf('email').value.trim();
+  if (!email) { lf('email').classList.add('err'); say('Введите почту — пришлём на неё ссылку'); return; }
+  try {
+    const r = await api<{ mail: boolean }>('/admin/forgot', { body: { email } });
+    say(r.mail ? 'Если эта почта есть в кабинете, на неё пришла ссылка. Она действует 1 час' : 'Попросите администратора сбросить пароль в разделе «Сотрудники»');
+  } catch (err) { oops(err); }
+});
 loginForm.addEventListener('submit', async e => {
   e.preventDefault(); let bad = false;
   [lf('email'), lf('pass')].forEach(i => { const x = !i.value.trim(); i.classList.toggle('err', x); bad = bad || x; });

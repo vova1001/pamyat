@@ -2,12 +2,14 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"io"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -246,6 +248,43 @@ func (s *Server) setupInfo(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, map[string]string{"email": email}, err)
 }
 
+// forgot — «Забыли пароль?»: письмо со ссылкой (1 час). Ответ один и тот же, есть такая почта или нет;
+// mail=false — почта не настроена, кабинет подскажет обратиться к администратору.
+func (s *Server) forgot(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Email string `json:"email"`
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	email := strings.ToLower(strings.TrimSpace(in.Email))
+	on := s.svc.MailConfigured()
+	if on && email != "" && s.resetLimit.Allow(email) {
+		// письмо — в фоне: время ответа не выдаёт, есть ли такая почта
+		go func() {
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 20*time.Second)
+			defer cancel()
+			if err := s.svc.ForgotPassword(ctx, email); err != nil {
+				slog.Error("письмо восстановления пароля", "err", err)
+			}
+		}()
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"mail": on})
+}
+
+// call — кнопка «Позвонить» в Telegram (кнопки не принимают tel:): перенаправление на tel:<номер>.
+// Принимаем только цифры и ведущий «+» — иначе не перенаправляем никуда.
+func (s *Server) call(w http.ResponseWriter, r *http.Request) {
+	p := chi.URLParam(r, "phone")
+	if !phoneRe.MatchString(p) {
+		writeErr(w, http.StatusNotFound, "not_found", "Не найдено", nil)
+		return
+	}
+	http.Redirect(w, r, "tel:"+p, http.StatusFound)
+}
+
+var phoneRe = regexp.MustCompile(`^\+?[0-9]{5,15}$`)
+
 type passwordIn struct {
 	CurrentPassword string `json:"current_password"`
 	NewPassword     string `json:"new_password"`
@@ -468,6 +507,11 @@ func (s *Server) testNotify(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) tgConnect(w http.ResponseWriter, r *http.Request) {
 	v, err := s.svc.TelegramConnect(r.Context())
+	respond(w, r, http.StatusOK, v, err)
+}
+
+func (s *Server) tgCheck(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.TelegramCheck(r.Context())
 	respond(w, r, http.StatusOK, v, err)
 }
 

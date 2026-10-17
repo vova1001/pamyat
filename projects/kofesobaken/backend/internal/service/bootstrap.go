@@ -57,8 +57,11 @@ func (s *Service) Bootstrap(ctx context.Context, adminEmail, adminPassword strin
 	return nil
 }
 
-// PendingSetup выдаёт новую одноразовую ссылку первого входа, если пароль администратора ещё не задан.
-// Пустая строка — ссылка не нужна.
+// PendingSetup выдаёт одноразовую ссылку первого входа, если пароль администратора ещё не задан и
+// действующей ссылки нет. Выданная ссылка живёт до срока или до использования: перезапуск (выкладка)
+// её не перевыпускает, иначе ссылка, уже отправленная заказчику, перестанет работать.
+// Новая ссылка — только явно: команда admin-link или ADMIN_LINK_ON_START (IssueSetupLink).
+// Пустая строка — новая ссылка не нужна.
 func (s *Service) PendingSetup(ctx context.Context, adminEmail string) (string, error) {
 	a, err := s.q.GetAdminByEmail(ctx, normEmail(adminEmail))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -66,6 +69,10 @@ func (s *Service) PendingSetup(ctx context.Context, adminEmail string) (string, 
 	}
 	if err != nil || a.PasswordHash != "" {
 		return "", err
+	}
+	if a.SetupTokenHash.Valid && a.SetupExpiresAt != nil && a.SetupExpiresAt.After(s.now()) {
+		slog.Info("ссылка входа администратора уже выдана и ещё действует — новая не нужна", "email", a.Email, "until", a.SetupExpiresAt.In(s.loc).Format("02.01.2006 15:04"))
+		return "", nil
 	}
 	return s.IssueSetupLink(ctx, a.Email)
 }

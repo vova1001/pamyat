@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"kofesobaken/backend/internal/notify"
 )
 
 type Config struct {
@@ -26,6 +28,9 @@ type Config struct {
 	Location         *time.Location
 	CookieSecure     bool
 	SeedDemo         bool
+	ResendAPIKey     string // почта через Resend; пусто — письма только в журнал
+	MailFrom         string // отправитель; до подтверждения домена — onboarding@resend.dev
+	TelegramToken    string // бот Telegram; пусто — сообщения только в журнал
 }
 
 func get(k, def string) string {
@@ -52,6 +57,9 @@ func Load() (Config, error) {
 		AdminPassTemp:    get("ADMIN_PASSWORD_TEMPORARY", "false") == "true",
 		CookieSecure:     get("COOKIE_SECURE", "false") == "true",
 		SeedDemo:         get("SEED_DEMO", "false") == "true",
+		ResendAPIKey:     os.Getenv("RESEND_API_KEY"),
+		MailFrom:         get("MAIL_FROM", notify.DefaultMailFrom),
+		TelegramToken:    os.Getenv("TELEGRAM_BOT_TOKEN"),
 	}
 	loc, err := time.LoadLocation(get("CAFE_TZ", "Europe/Moscow"))
 	if err != nil {

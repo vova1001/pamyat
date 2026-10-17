@@ -3,6 +3,8 @@
 //	server             — запуск
 //	server admin-link  — новая одноразовая ссылка входа администратора (забыл пароль): пароль задаётся заново
 //	ADMIN_LINK_ON_START=true — то же при каждом старте (хостинг без консоли, например бесплатный Render)
+//	Без этого ссылка выдаётся, только пока пароль не задан и прежняя ссылка истекла (перезапуск её не меняет).
+//	RESEND_API_KEY, MAIL_FROM, TELEGRAM_BOT_TOKEN — настоящие письма и сообщения; без них — в журнал.
 package main
 
 import (
@@ -54,8 +56,8 @@ func run() error {
 	}
 
 	pay := payments.NewTestProvider(cfg.PublicURL, cfg.WebhookURL, cfg.WebhookSecret)
-	channels := []notify.Channel{notify.LogChannel{Channel_: "email"}, notify.LogChannel{Channel_: "telegram"}}
-	svc := service.New(pool, pay, channels, cfg.Location)
+	svc := service.New(pool, pay, channels(cfg), cfg.Location)
+	svc.SetPublicURL(cfg.PublicURL)
 	svc.SetAdminPasswordTemporary(cfg.AdminPassTemp)
 	if err := svc.Bootstrap(ctx, cfg.AdminEmail, cfg.AdminPassword, cfg.SeedDemo); err != nil {
 		return err
@@ -74,6 +76,7 @@ func run() error {
 	}
 	if code != "" {
 		logSetupLink(cfg, code)
+		svc.MailSetupLink(ctx, cfg.AdminEmail, setupURL(cfg, code))
 	}
 	if cmdLink {
 		return nil
@@ -99,7 +102,8 @@ func run() error {
 		defer cancel()
 		_ = srv.Shutdown(sh)
 	}()
-	slog.Info("сервер запущен", "addr", cfg.HTTPAddr, "payments", pay.Name(), "photos", cfg.MediaStore)
+	slog.Info("сервер запущен", "addr", cfg.HTTPAddr, "payments", pay.Name(), "photos", cfg.MediaStore,
+		"mail", cfg.ResendAPIKey != "", "telegram", cfg.TelegramToken != "")
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
@@ -109,7 +113,22 @@ func run() error {
 // logSetupLink — ссылка первого входа: по ней администратор сам задаёт пароль. В базе — только хэш кода.
 func logSetupLink(cfg config.Config, code string) {
 	slog.Warn("ссылка входа администратора: откройте её и придумайте пароль (одноразовая, 72 часа)",
-		"email", cfg.AdminEmail, "link", cfg.PublicURL+"/admin#setup/"+code)
+		"email", cfg.AdminEmail, "link", setupURL(cfg, code))
+}
+
+func setupURL(cfg config.Config, code string) string { return cfg.PublicURL + "/admin#setup/" + code }
+
+// channels — настоящие адаптеры, если заданы ключи; иначе заглушки (сообщения в журнал), как раньше.
+func channels(cfg config.Config) []notify.Channel {
+	var mail notify.Channel = notify.LogChannel{Channel_: "email"}
+	if cfg.ResendAPIKey != "" {
+		mail = notify.Resend{APIKey: cfg.ResendAPIKey, From: cfg.MailFrom}
+	}
+	var tg notify.Channel = notify.LogChannel{Channel_: "telegram"}
+	if cfg.TelegramToken != "" {
+		tg = notify.Telegram{Token: cfg.TelegramToken, PublicURL: cfg.PublicURL}
+	}
+	return []notify.Channel{mail, tg}
 }
 
 // connect ждёт базу до 60 секунд — при первом запуске Postgres поднимается дольше сервера.

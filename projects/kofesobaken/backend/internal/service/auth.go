@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"
 
+	"kofesobaken/backend/internal/notify"
 	"kofesobaken/backend/internal/store"
 )
 
@@ -22,6 +23,8 @@ const (
 	SessionTTL = 30 * 24 * time.Hour
 	// SetupTTL — сколько действует ссылка первого входа администратора.
 	SetupTTL = 72 * time.Hour
+	// ResetTTL — сколько действует ссылка восстановления пароля из письма.
+	ResetTTL = time.Hour
 
 	RoleAdmin = "admin"
 	RoleStaff = "staff"
@@ -223,6 +226,9 @@ func (s *Service) SetupPassword(ctx context.Context, code, password string) (str
 	if err != nil {
 		return "", Account{}, err
 	}
+	if !a.Active {
+		return "", Account{}, ErrSetupExpired
+	}
 	f := fields{}
 	checkPassword(f, "password", password)
 	if err := f.err(); err != nil {
@@ -246,4 +252,72 @@ func (s *Service) SetupPassword(ctx context.Context, code, password string) (str
 	}
 	a.MustChangePassword = false
 	return token, accountOf(a), nil
+}
+
+// mailer — настоящий почтовый канал (Resend); false — ключа нет, письма только в журнал.
+func (s *Service) mailer() (notify.Channel, bool) {
+	for _, ch := range s.channels {
+		if ch.Name() == "email" && !notify.IsLog(ch) {
+			return ch, true
+		}
+	}
+	return nil, false
+}
+
+// MailConfigured — письма уходят по-настоящему (задан RESEND_API_KEY).
+func (s *Service) MailConfigured() bool {
+	_, ok := s.mailer()
+	return ok
+}
+
+// ForgotPassword — письмо со ссылкой на новый пароль (1 час, одноразовая) администратору или сотруднику.
+// Неизвестная почта или отключённый сотрудник — молча ничего, чтобы по ответу нельзя было узнать, есть ли такая почта.
+// Без почтового ключа — ничего (пароль сотруднику сбрасывает администратор, администратору — admin-link).
+func (s *Service) ForgotPassword(ctx context.Context, email string) error {
+	ch, ok := s.mailer()
+	if !ok || s.publicURL == "" {
+		return nil
+	}
+	a, err := s.q.GetAdminByEmail(ctx, normEmail(email))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !a.Active {
+		return nil
+	}
+	code, err := randomToken()
+	if err != nil {
+		return err
+	}
+	exp := s.now().Add(ResetTTL)
+	if err := s.q.SetSetupToken(ctx, store.SetSetupTokenParams{ID: a.ID, SetupTokenHash: pgtype.Text{String: hashToken(code), Valid: true}, SetupExpiresAt: &exp}); err != nil {
+		return err
+	}
+	return ch.Send(ctx, a.Email, notify.Message{
+		Kind:  "reset",
+		Title: "Новый пароль для кабинета КофеСобакен",
+		Body:  "Кто-то (наверное, вы) попросил новый пароль для входа в кабинет.\nСсылка действует 1 час и сработает один раз.\nЕсли это были не вы — просто удалите письмо, пароль останется прежним.",
+		Link:  s.publicURL + "/admin#setup/" + code,
+	})
+}
+
+// MailSetupLink — ссылка первого входа администратору на почту (если почта настроена). Ошибка — только в лог:
+// ссылка всё равно есть в логе сервера.
+func (s *Service) MailSetupLink(ctx context.Context, email, link string) {
+	ch, ok := s.mailer()
+	if !ok || email == "" {
+		return
+	}
+	err := ch.Send(ctx, normEmail(email), notify.Message{
+		Kind:  "setup",
+		Title: "Вход в кабинет КофеСобакен",
+		Body:  "По ссылке вы зададите пароль администратора.\nСсылка одноразовая и действует 72 часа.",
+		Link:  link,
+	})
+	if err != nil {
+		logErr("письмо со ссылкой входа", err)
+	}
 }

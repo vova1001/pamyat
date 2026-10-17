@@ -235,7 +235,23 @@ func TestSetupLink(t *testing.T) {
 		t.Fatal(err)
 	}
 	old, _ := e.svc.PendingSetup(ctx, "boss@example.com")
-	code, _ := e.svc.PendingSetup(ctx, "boss@example.com") // перезапуск — новая ссылка, старая не действует
+	if old == "" {
+		t.Fatal("первая ссылка")
+	}
+	// перезапуск (выкладка) не перевыпускает ссылку: отправленная заказчику продолжает работать
+	if again, err := e.svc.PendingSetup(ctx, "boss@example.com"); err != nil || again != "" {
+		t.Fatalf("перезапуск перевыпустил ссылку: %q %v", again, err)
+	}
+	if em, err := e.svc.SetupEmail(ctx, old); err != nil || em != "boss@example.com" {
+		t.Fatalf("ссылка после перезапуска: %q %v", em, err)
+	}
+	// срок вышел — при старте новая ссылка, старая не действует
+	e.svc.SetClock(func() time.Time { return time.Now().Add(service.SetupTTL + time.Minute) })
+	code, _ := e.svc.PendingSetup(ctx, "boss@example.com")
+	e.svc.SetClock(time.Now)
+	if code == "" || code == old {
+		t.Fatal("после срока — новая ссылка")
+	}
 	if _, _, err := e.svc.SetupPassword(ctx, old, "boss-pass-1"); !errors.Is(err, service.ErrSetupExpired) {
 		t.Fatalf("старая ссылка: %v", err)
 	}
@@ -601,7 +617,7 @@ func TestBookingFlow(t *testing.T) {
 	if len(list) != 1 || list[0].Status != "new" || list[0].Time != "18:00" || list[0].Date != day(1) || !list[0].WithDog {
 		t.Fatalf("бронь в кабинете: %+v", list)
 	}
-	if len(e.email.sent) != 1 || !strings.Contains(e.email.sent[0].Body, "2 гостя · с собакой") || e.email.sent[0].Title != "Новая бронь столика" {
+	if len(e.email.sent) != 1 || !strings.Contains(e.email.sent[0].Body, "2 гостя · с собакой") || e.email.sent[0].Title != "Новая бронь столика" || e.email.sent[0].Phone == "" {
 		t.Fatalf("письмо о брони: %+v", e.email.sent)
 	}
 	if b, err := e.svc.ConfirmBooking(ctx, c.ID); err != nil || b.Status != "confirmed" {
@@ -779,8 +795,9 @@ func TestContentAndSettings(t *testing.T) {
 	if n, err := e.svc.TestNotify(ctx, "email"); err != nil || n.Recipient != "owner@example.com" || n.Status != "sent" {
 		t.Fatalf("проверочное письмо: %v %+v", err, n)
 	}
-	s, err = e.svc.TelegramConnect(ctx)
-	if err != nil || !s.Notify.TelegramConnected || s.Notify.TelegramChat != "@ludi_bydte_dobree" || len(e.tg.sent) != 1 {
+	r, err := e.svc.TelegramConnect(ctx)
+	s = r.Settings
+	if err != nil || r.Link != "" || !s.Notify.TelegramConnected || s.Notify.TelegramChat != "@ludi_bydte_dobree" || len(e.tg.sent) != 1 {
 		t.Fatalf("подключение Telegram: %v %+v", err, s.Notify)
 	}
 	e.tg.fail = true

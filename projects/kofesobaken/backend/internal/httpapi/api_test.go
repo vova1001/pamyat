@@ -537,6 +537,33 @@ func TestSetupEndpoint(t *testing.T) {
 	}
 }
 
+func TestForgotAndCall(t *testing.T) {
+	c, _ := setup(t)
+	// почта не настроена (заглушка) — mail=false, кабинет подскажет обратиться к администратору
+	if st, m, _ := c.do("POST", "/api/admin/forgot", map[string]string{"email": "owner@example.com"}); st != 200 || m["mail"] != false {
+		t.Fatalf("забыли пароль: %d %v", st, m)
+	}
+	noRedirect := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	res, err := noRedirect.Get(c.base + "/api/call/+79000000001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = res.Body.Close()
+	if res.StatusCode != http.StatusFound || res.Header.Get("Location") != "tel:+79000000001" {
+		t.Fatalf("позвонить: %d %q", res.StatusCode, res.Header.Get("Location"))
+	}
+	for _, bad := range []string{"javascript:alert(1)", "https:%2F%2Fevil.test", "12"} {
+		res, err := noRedirect.Get(c.base + "/api/call/" + bad)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = res.Body.Close()
+		if res.StatusCode != http.StatusNotFound {
+			t.Fatalf("позвонить %q: %d", bad, res.StatusCode)
+		}
+	}
+}
+
 func TestLoginLimitNotBypassedByHeaders(t *testing.T) {
 	c, _ := setup(t)
 	try := func(hdr, val, email string) int {

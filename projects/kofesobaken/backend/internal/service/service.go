@@ -57,12 +57,13 @@ func (f fields) err() error {
 }
 
 type Service struct {
-	db       *pgxpool.Pool
-	q        *store.Queries
-	pay      payments.Provider
-	channels []notify.Channel
-	loc      *time.Location
-	now      func() time.Time
+	db        *pgxpool.Pool
+	q         *store.Queries
+	pay       payments.Provider
+	channels  []notify.Channel
+	loc       *time.Location
+	now       func() time.Time
+	publicURL string // адрес сайта — ссылки в письмах и сообщениях
 	// adminPassTemp — ADMIN_PASSWORD временный (сгенерирован хостингом): при первом входе — смена.
 	adminPassTemp bool
 }
@@ -73,6 +74,9 @@ func New(db *pgxpool.Pool, pay payments.Provider, channels []notify.Channel, loc
 
 // SetAdminPasswordTemporary — пароль администратора из окружения считать временным (см. Bootstrap).
 func (s *Service) SetAdminPasswordTemporary(v bool) { s.adminPassTemp = v }
+
+// SetPublicURL — адрес сайта для ссылок в уведомлениях (кабинет, восстановление пароля).
+func (s *Service) SetPublicURL(u string) { s.publicURL = strings.TrimRight(u, "/") }
 
 // SetClock — для тестов.
 func (s *Service) SetClock(now func() time.Time) { s.now = now }

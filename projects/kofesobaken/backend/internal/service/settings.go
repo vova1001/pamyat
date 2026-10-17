@@ -52,7 +52,8 @@ type NotifySettings struct {
 	EmailEnabled      bool   `json:"email_enabled"`
 	Email             string `json:"email"`
 	TelegramConnected bool   `json:"telegram_connected"`
-	TelegramChat      string `json:"telegram_chat"`
+	TelegramChat      string `json:"telegram_chat"`              // кого показать в кабинете: @имя
+	TelegramChatID    string `json:"telegram_chat_id,omitempty"` // куда слать (chat_id из Telegram); пусто — заглушка
 	OnBooking         bool   `json:"on_booking"`
 	OnSignup          bool   `json:"on_signup"`
 	OnFull            bool   `json:"on_full"`
@@ -133,7 +134,12 @@ func (s *Service) orderSettings(ctx context.Context) (OrderSettings, error) {
 }
 
 func (s *Service) notifySettings(ctx context.Context) (NotifySettings, error) {
-	return getJSON(ctx, s.q, keyNotify, DefaultNotify())
+	n, err := getJSON(ctx, s.q, keyNotify, DefaultNotify())
+	// Подключено заглушкой (без бота), а теперь бот есть — чата нет: нужно подключить по-настоящему.
+	if _, bot := s.telegram(); bot && n.TelegramChatID == "" {
+		n.TelegramConnected = false
+	}
+	return n, err
 }
 
 func (s *Service) PutContent(ctx context.Context, c Content) (Content, error) {
@@ -216,7 +222,7 @@ func (s *Service) PutSettings(ctx context.Context, in Settings) (Settings, error
 	if err != nil {
 		return in, err
 	}
-	n.TelegramConnected, n.TelegramChat = cur.TelegramConnected, cur.TelegramChat
+	n.TelegramConnected, n.TelegramChat, n.TelegramChatID = cur.TelegramConnected, cur.TelegramChat, cur.TelegramChatID
 	err = s.inTx(ctx, func(q *store.Queries) error {
 		if err := putJSON(ctx, q, keyOrder, OrderSettings{DeliveryMinKop: in.DeliveryMinKop, DeliveryRadiusKm: in.DeliveryRadiusKm}); err != nil {
 			return err

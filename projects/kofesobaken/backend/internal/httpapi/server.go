@@ -32,6 +32,7 @@ type Server struct {
 	formLimit    *RateLimiter
 	loginLimit   *RateLimiter // неверные пароли с одного адреса
 	emailLimit   *RateLimiter // неверные пароли к одной почте — с любых адресов
+	resetLimit   *RateLimiter // письма «забыли пароль» на одну почту
 }
 
 type Options struct {
@@ -49,6 +50,7 @@ func New(svc *service.Service, pay payments.Provider, o Options) *Server {
 		formLimit:  NewRateLimiter(10, time.Minute),   // 10 оформлений в минуту с одного адреса
 		loginLimit: NewRateLimiter(8, 15*time.Minute), // 8 неверных паролей за 15 минут
 		emailLimit: NewRateLimiter(20, 15*time.Minute),
+		resetLimit: NewRateLimiter(3, time.Hour), // 3 письма в час на одну почту
 	}
 }
 
@@ -62,6 +64,7 @@ func (s *Server) Routes() http.Handler {
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/healthz", s.health)
 		r.Get("/site", s.site)
+		r.Get("/call/{phone}", s.call)
 		r.With(s.formLimit.Middleware).Post("/orders", s.createOrder)
 		r.With(s.formLimit.Middleware).Post("/bookings", s.createBooking)
 		r.With(s.formLimit.Middleware).Post("/events/{id}/signups", s.createSignup)
@@ -78,6 +81,7 @@ func (s *Server) Routes() http.Handler {
 			r.Post("/logout", s.logout)
 			r.Post("/setup", s.setup)
 			r.Post("/setup/info", s.setupInfo)
+			r.With(s.formLimit.Middleware).Post("/forgot", s.forgot)
 			r.Group(func(r chi.Router) {
 				r.Use(s.requireLogin)
 				// доступно и с временным паролем — чтобы сменить его
@@ -114,6 +118,7 @@ func (s *Server) Routes() http.Handler {
 					r.Put("/settings", s.putSettings)
 					r.Post("/notify/test", s.testNotify)
 					r.Post("/telegram/connect", s.tgConnect)
+					r.Post("/telegram/check", s.tgCheck)
 					r.Post("/telegram/disconnect", s.tgDisconnect)
 					r.Get("/notifications", s.listNotifications)
 					r.Get("/staff", s.listStaff)

@@ -610,6 +610,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/forgot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * «Забыли пароль?» — письмо со ссылкой /admin#setup/<token> (1 час, одноразовая), если почта настроена (RESEND_API_KEY)
+         * @description Ответ одинаковый, есть такая почта или нет. mail=false — почта не настроена, пароль сбрасывает администратор.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        email: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            mail: boolean;
+                        };
+                    };
+                };
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/call/{phone}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Кнопка «Позвонить» в Telegram — перенаправление на tel:<phone> (Telegram не принимает tel-ссылки в кнопках) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    phone: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Location: tel:<phone> */
+                302: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                404: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/staff": {
         parameters: {
             query?: never;
@@ -1450,7 +1535,49 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Подключить Telegram (сейчас заглушка — подключает и шлёт проверочное сообщение в журнал) */
+        /**
+         * Подключить Telegram
+         * @description С ботом (TELEGRAM_BOT_TOKEN) — ссылка telegram_link (t.me/<бот>?start=<код>, 30 минут); владелица жмёт «Старт»,
+         *     кабинет опрашивает /admin/telegram/check. Без бота — заглушка: подключает сразу, проверка — в журнал.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TelegramConnect"];
+                    };
+                };
+                403: components["responses"]["Error"];
+                409: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/telegram/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Нажата ли «Старт» по ссылке подключения; если да — чат подключён и уходит проверочное сообщение */
         post: {
             parameters: {
                 query?: never;
@@ -1728,12 +1855,18 @@ export interface components {
             booking_prepay_kop: number;
             notify: components["schemas"]["NotifySettings"];
         };
+        TelegramConnect: components["schemas"]["Settings"] & {
+            /** @description ссылка на бота; нет — бот не настроен (подключено заглушкой) */
+            telegram_link?: string;
+        };
         NotifySettings: {
             email_enabled: boolean;
             email: string;
             telegram_connected: boolean;
             /** @example @ludi_bydte_dobree */
             telegram_chat: string;
+            /** @description chat_id подключённого чата (только чтение) */
+            telegram_chat_id?: string;
             on_booking: boolean;
             on_signup: boolean;
             on_full: boolean;
