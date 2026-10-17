@@ -1,7 +1,7 @@
 // Кабинет: поведение из согласованного эскиза admin.html, данные — настоящие, через API.
 import { api, ApiFail } from '../lib/api';
 import { dayLong, dayNum, monShort, plural, rub } from '../lib/format';
-import type { AdminEvent, Booking, Content, MenuItem, Notification, Order, Settings, Signup } from '../lib/types';
+import type { AdminEvent, Booking, Content, Me, MenuItem, Notification, Order, Settings, Signup, Staff } from '../lib/types';
 
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector(s) as T;
 const $$ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => [...r.querySelectorAll(s)] as T[];
@@ -11,10 +11,12 @@ const say = (m: string) => { toast.textContent = m; toast.classList.add('show');
 const desk = () => matchMedia('(min-width:1024px)').matches;
 $$('[data-desk]').forEach(el => { if (desk()) el.style.display = ''; });
 
-/** Ошибка API: 401 — на вход, иначе понятное сообщение. */
+/** Ошибка API: 401 — на вход, 403 — раздел не для этой роли или нужна смена пароля, иначе понятное сообщение. */
 function oops(e: unknown, fieldsMap: Record<string, Element | null | undefined> = {}) {
   const f = e instanceof ApiFail ? e : new ApiFail(0, null);
-  if (f.status === 401 && f.code !== 'bad_login') { location.hash = '#login'; say('Войдите снова'); return; }
+  if (f.status === 401 && f.code !== 'bad_login') { me = null; location.hash = '#login'; route(); say('Войдите снова'); return; }
+  if (f.code === 'password_change_required') { if (me) me.must_change_password = true; route(); return; }
+  if (f.code === 'forbidden') { location.hash = '#bookings'; say(f.message); return; }
   Object.entries(fieldsMap).forEach(([k, el]) => el?.classList.toggle('err', k in f.fields));
   say(Object.values(f.fields)[0] || f.message);
 }
@@ -365,32 +367,126 @@ $('#ovl').addEventListener('click', closeSheet);
 $$('.js-close').forEach(b => b.addEventListener('click', closeSheet));
 addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 
+// ================= СОТРУДНИКИ (только администратор) =================
+let SF: Staff[] = [];
+function renderStaff() {
+  $('#staffList').innerHTML = SF.length ? SF.map(u => `<article class="bk ${u.active ? '' : 'bk--no'}">
+      <div class="bk__who"><b>${esc(u.name)}</b><span>${esc(u.email)}</span></div>
+      <div class="bk__info"><span class="pill">${u.role === 'admin' ? 'администратор' : 'сотрудник'}</span>${u.must_change_password ? '<span class="pill">ждёт первого входа</span>' : ''}</div>
+      <div class="bk__end"><span class="st ${u.active ? 'st--ok' : 'st--no'} bk__st">${u.active ? 'активен' : 'отключён'}</span>
+        ${me && u.id !== me.id ? `<div class="bk__acts"><button class="btn btn--soft btn--sm" data-reset="${u.id}">Новый пароль</button><button class="btn btn--soft btn--sm" data-toggle="${u.id}">${u.active ? 'Отключить' : 'Включить'}</button></div>` : '<small style="color:var(--soft)">это вы</small>'}
+      </div></article>`).join('') : '<div class="empty"><b>Пока никого</b>Создайте вход первому сотруднику.</div>';
+}
+async function loadStaff() { try { SF = await api<Staff[]>('/admin/staff'); renderStaff(); } catch (e) { oops(e); } }
+const staffForm = $<HTMLFormElement>('#staffForm');
+const sf = (n: string) => staffForm.elements.namedItem(n) as HTMLInputElement;
+const emailOk = (v: string) => /^\S+@\S+\.\S+$/.test(v.trim());
+staffForm.addEventListener('submit', async e => {
+  e.preventDefault(); let bad = false;
+  ([['name', !sf('name').value.trim()], ['email', !emailOk(sf('email').value)], ['pass', sf('pass').value.length < 8]] as const)
+    .forEach(([k, x]) => { sf(k).classList.toggle('err', x); bad = bad || x; });
+  if (bad) { say('Имя, почта и пароль не короче 8 символов'); return; }
+  const btn = $<HTMLButtonElement>('button[type="submit"]', staffForm); btn.disabled = true;
+  try {
+    await api<Staff>('/admin/staff', { body: { name: sf('name').value, email: sf('email').value, password: sf('pass').value, role: sf('role').value } });
+    staffForm.reset(); say('Вход создан. Передайте сотруднику почту и временный пароль'); loadStaff();
+  } catch (err) { oops(err, { name: sf('name'), email: sf('email'), password: sf('pass') }); } finally { btn.disabled = false; }
+});
+$('#staffList').addEventListener('click', async e => {
+  const t = (e.target as HTMLElement).closest<HTMLElement>('[data-toggle]'), r = (e.target as HTMLElement).closest<HTMLElement>('[data-reset]');
+  const u = SF.find(x => String(x.id) === (t?.dataset.toggle || r?.dataset.reset)); if (!u) return;
+  try {
+    if (t) {
+      await api<Staff>(`/admin/staff/${u.id}`, { method: 'PUT', body: { name: u.name, email: u.email, active: !u.active } });
+      say(u.active ? 'Сотрудник отключён — войти больше не сможет' : 'Сотрудник снова может войти');
+    } else {
+      const p = prompt('Новый временный пароль (не короче 8 символов). Передайте его сотруднику:'); if (!p) return;
+      if (p.length < 8) { say('Не короче 8 символов'); return; }
+      await api<Staff>(`/admin/staff/${u.id}/password`, { body: { password: p } });
+      say('Новый пароль задан — при входе сотрудник сменит его');
+    }
+    loadStaff();
+  } catch (err) { oops(err); }
+});
+
 // ================= ВХОД И РАЗДЕЛЫ =================
+let me: Me | null = null;
+const ADMIN_ONLY = ['content', 'notify', 'staff'];
 const loginForm = $<HTMLFormElement>('#loginForm');
+const setupForm = $<HTMLFormElement>('#setupForm');
+const changeForm = $<HTMLFormElement>('#changeForm');
 const lf = (n: string) => loginForm.elements.namedItem(n) as HTMLInputElement;
+const field = (f: HTMLFormElement, n: string) => f.elements.namedItem(n) as HTMLInputElement;
+const LOGIN_SUB = $('#loginSub').innerHTML;
+function forms(which: 'login' | 'setup' | 'change') {
+  loginForm.hidden = which !== 'login'; setupForm.hidden = which !== 'setup'; changeForm.hidden = which !== 'change';
+  $('#loginSub').innerHTML = which === 'setup' ? 'Создайте вход администратора.' : which === 'change' ? 'Придумайте свой пароль.' : LOGIN_SUB;
+}
+/** Разделы по роли: сотруднику — брони, заказы, меню, мероприятия. Права проверяет и сервер. */
+function applyRole() {
+  if (!me) return;
+  const admin = me.role === 'admin';
+  $$('[data-s]').forEach(a => { a.hidden = !admin && ADMIN_ONLY.includes(a.dataset.s!); });
+  $('#whoName').textContent = me.name || me.email; $('#whoRole').textContent = admin ? 'администратор' : 'сотрудник';
+}
+function pw2(f: HTMLFormElement) {
+  const a = field(f, 'pass'), b = field(f, 'pass2');
+  const bad = a.value.length < 8 ? 'Пароль — не короче 8 символов' : a.value !== b.value ? 'Пароли не совпадают' : '';
+  a.classList.toggle('err', a.value.length < 8); b.classList.toggle('err', !!bad && a.value.length >= 8);
+  if (bad) say(bad);
+  return !bad;
+}
+function entered(m: Me) { me = m; applyRole(); if (!m.must_change_password) { loadBk(); loadOr(); } }
+
 $('#showPass').addEventListener('click', () => { const p = lf('pass'); p.type = p.type === 'password' ? 'text' : 'password'; });
-$('#forgot').addEventListener('click', e => { e.preventDefault(); say('Напишите в студию — пришлём новый пароль'); });
-let authed = false;
+$('#forgot').addEventListener('click', e => { e.preventDefault(); say('Попросите администратора сбросить пароль в разделе «Сотрудники»'); });
 loginForm.addEventListener('submit', async e => {
   e.preventDefault(); let bad = false;
   [lf('email'), lf('pass')].forEach(i => { const x = !i.value.trim(); i.classList.toggle('err', x); bad = bad || x; });
   if (bad) { say('Введите почту и пароль'); return; }
   const btn = $<HTMLButtonElement>('button[type="submit"]', loginForm); btn.disabled = true;
   try {
-    await api('/admin/login', { body: { email: lf('email').value, password: lf('pass').value } });
-    authed = true; lf('pass').value = ''; location.hash = '#bookings'; route();
+    const m = await api<Me>('/admin/login', { body: { email: lf('email').value, password: lf('pass').value } });
+    lf('pass').value = ''; entered(m); location.hash = '#bookings'; route();
   } catch (err) { lf('pass').classList.add('err'); oops(err); } finally { btn.disabled = false; }
 });
-$$('.js-logout').forEach(b => b.addEventListener('click', async () => { try { await api('/admin/logout', { method: 'POST' }); } catch { /* всё равно выходим */ } authed = false; location.hash = '#login'; }));
 
-const loaders: Record<string, () => void> = { bookings: loadBk, orders: loadOr, menu: loadMi, events: loadEv, content: loadContent, notify: () => { loadContent(); loadNotes(); } };
+// первый вход администратора: /admin#setup/<код> — код убираем из адресной строки сразу
+let setupCode = '';
+async function openSetup(code: string) {
+  if (code) { setupCode = code; history.replaceState(null, '', '#setup'); }
+  forms('setup');
+  try { const r = await api<{ email: string }>('/admin/setup/info', { body: { token: setupCode } }); field(setupForm, 'email').value = r.email; }
+  catch (err) { forms('login'); history.replaceState(null, '', '#login'); oops(err); }
+}
+setupForm.addEventListener('submit', async e => {
+  e.preventDefault(); if (!pw2(setupForm)) return;
+  const btn = $<HTMLButtonElement>('button[type="submit"]', setupForm); btn.disabled = true;
+  try {
+    const m = await api<Me>('/admin/setup', { body: { token: setupCode, password: field(setupForm, 'pass').value } });
+    setupForm.reset(); setupCode = ''; entered(m); say('Готово — вы администратор'); location.hash = '#bookings'; route();
+  } catch (err) { oops(err, { password: field(setupForm, 'pass') }); } finally { btn.disabled = false; }
+});
+changeForm.addEventListener('submit', async e => {
+  e.preventDefault(); if (!me || !pw2(changeForm)) return;
+  const btn = $<HTMLButtonElement>('button[type="submit"]', changeForm); btn.disabled = true;
+  try {
+    const m = await api<Me>('/admin/password', { body: { new_password: field(changeForm, 'pass').value } });
+    changeForm.reset(); entered(m); say('Пароль сохранён'); location.hash = '#bookings'; route();
+  } catch (err) { oops(err, { new_password: field(changeForm, 'pass') }); } finally { btn.disabled = false; }
+});
+$$('.js-logout').forEach(b => b.addEventListener('click', async () => { try { await api('/admin/logout', { method: 'POST' }); } catch { /* всё равно выходим */ } me = null; location.hash = '#login'; route(); }));
+
+const loaders: Record<string, () => void> = { bookings: loadBk, orders: loadOr, menu: loadMi, events: loadEv, content: loadContent, notify: () => { loadContent(); loadNotes(); }, staff: loadStaff };
 function route() {
   const [s, sub] = (location.hash.slice(1) || 'bookings').split('/');
-  const isLogin = !authed || s === 'login' || !$('#s-' + s);
-  if (authed && isLogin && s !== 'login') { location.hash = '#bookings'; return; }
-  $('#login').hidden = !isLogin; $('#app').hidden = isLogin;
   closeSheet();
-  if (isLogin) return;
+  const showLogin = (which: 'login' | 'setup' | 'change') => { $('#login').hidden = false; $('#app').hidden = true; if (which !== 'setup') forms(which); };
+  if (s === 'setup' && (sub || setupCode)) { showLogin('setup'); openSetup(sub || ''); return; }
+  if (!me) { showLogin('login'); return; }
+  if (me.must_change_password) { field(changeForm, 'email').value = me.email; showLogin('change'); return; }
+  if (s === 'login' || s === 'setup' || !$('#s-' + s) || (ADMIN_ONLY.includes(s) && me.role !== 'admin')) { history.replaceState(null, '', '#bookings'); route(); return; }
+  $('#login').hidden = true; $('#app').hidden = false;
   $$('.scr').forEach(x => (x.hidden = x.id !== 's-' + s));
   $$('[data-s]').forEach(a => a.classList.toggle('on', a.dataset.s === s));
   scrollTo(0, 0);
@@ -401,10 +497,9 @@ function route() {
 addEventListener('hashchange', route);
 // счётчики новых в меню разделов — сразу после входа
 async function boot() {
-  try { await api('/admin/me'); authed = true; } catch { authed = false; }
-  if (authed) { if (location.hash === '#login' || !location.hash) location.hash = '#bookings'; loadBk(); loadOr(); }
+  try { entered(await api<Me>('/admin/me')); } catch { me = null; }
   route();
 }
 boot();
 // раз в минуту — свежие брони и заказы
-setInterval(() => { if (authed && !document.hidden) { loadBk(); loadOr(); } }, 60000);
+setInterval(() => { if (me && !me.must_change_password && !document.hidden) { loadBk(); loadOr(); } }, 60000);

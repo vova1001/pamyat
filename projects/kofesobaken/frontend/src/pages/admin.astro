@@ -1,5 +1,5 @@
 ---
-// Кабинет владельца. Разметка — из согласованного эскиза admin.html; данные — через API.
+// Кабинет администратора и сотрудников. Разметка — из согласованного эскиза admin.html; данные — через API.
 import '../styles/admin.css';
 Astro.response.headers.set('Cache-Control', 'no-store');
 ---
@@ -52,7 +52,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
     <div class="login__hello">
       <div class="login__sticker"><img src="/img/dog-cafe-table.jpg" alt=""></div>
       <h1>Вход<br>в <em>кабинет</em></h1>
-      <p>Брони, меню, мероприятия<br>и тексты сайта.</p>
+      <p id="loginSub">Брони, меню, мероприятия<br>и тексты сайта.</p>
     </div>
     <form class="card form" id="loginForm" novalidate>
       <label class="fld"><span>Почта</span><input class="inp" name="email" type="email" autocomplete="username" placeholder="you@mail.ru" required></label>
@@ -60,7 +60,21 @@ Astro.response.headers.set('Cache-Control', 'no-store');
       <button class="btn btn--main" type="submit">Войти</button>
       <p class="forgot">Забыли пароль? <a href="#login" id="forgot">Пришлём ссылку на почту</a></p>
     </form>
-    <p class="login__foot"><svg><use href="#info"/></svg><span>Вход только для владельца кофейни. Сайт для гостей — <a href="/">открыть</a>.</span></p>
+    <form class="card form" id="setupForm" novalidate hidden>
+      <p style="color:var(--soft);font-weight:600">Первый вход: придумайте пароль администратора. Его знаете только вы.</p>
+      <label class="fld"><span>Почта администратора</span><input class="inp" name="email" type="email" autocomplete="username" readonly></label>
+      <label class="fld"><span>Пароль — не короче 8 символов</span><input class="inp" name="pass" type="password" autocomplete="new-password" minlength="8" required></label>
+      <label class="fld"><span>Повторите пароль</span><input class="inp" name="pass2" type="password" autocomplete="new-password" required></label>
+      <button class="btn btn--main" type="submit">Создать и войти</button>
+    </form>
+    <form class="card form" id="changeForm" novalidate hidden>
+      <p style="color:var(--soft);font-weight:600">Вы вошли по временному паролю. Придумайте свой — его будете знать только вы.</p>
+      <input type="email" name="email" autocomplete="username" hidden>
+      <label class="fld"><span>Новый пароль — не короче 8 символов</span><input class="inp" name="pass" type="password" autocomplete="new-password" minlength="8" required></label>
+      <label class="fld"><span>Повторите пароль</span><input class="inp" name="pass2" type="password" autocomplete="new-password" required></label>
+      <button class="btn btn--main" type="submit">Сохранить и войти</button>
+    </form>
+    <p class="login__foot"><svg><use href="#info"/></svg><span>Вход для администратора и сотрудников кофейни. Сайт для гостей — <a href="/">открыть</a>.</span></p>
   </div>
 </div>
 
@@ -75,9 +89,10 @@ Astro.response.headers.set('Cache-Control', 'no-store');
       <a href="#events" data-s="events"><svg><use href="#star"/></svg>Мероприятия</a>
       <a href="#content" data-s="content"><svg><use href="#image"/></svg>Фото и тексты</a>
       <a href="#notify" data-s="notify"><svg><use href="#bell"/></svg>Уведомления</a>
+      <a href="#staff" data-s="staff"><svg><use href="#users"/></svg>Сотрудники</a>
     </nav>
     <div class="side__foot">
-      <div class="side__card"><b>Сайт работает</b>Изменения видны гостям сразу после «Сохранить».</div>
+      <div class="side__card"><b id="whoName">Сайт работает</b><span id="whoRole">Изменения видны гостям сразу после «Сохранить».</span></div>
       <a href="/" target="_blank" rel="noopener"><svg><use href="#ext"/></svg>Открыть сайт</a>
       <button type="button" class="js-logout"><svg><use href="#out"/></svg>Выйти</button>
     </div>
@@ -228,6 +243,21 @@ Astro.response.headers.set('Cache-Control', 'no-store');
       </div>
     </section>
 
+    <!-- ---------- СОТРУДНИКИ (только администратор) ---------- -->
+    <section class="scr" id="s-staff" hidden>
+      <div class="ph"><div><span class="eyebrow">доступ в кабинет</span><h1>Сотрудники</h1><p>Создайте работнику вход: почта и временный пароль. При первом входе он придумает свой. Сотрудник видит брони, заказы, меню и мероприятия; тексты, уведомления и сотрудников — только администратор.</p></div></div>
+      <form class="card form" id="staffForm" novalidate style="margin-bottom:22px;max-width:640px">
+        <div class="two" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+          <label class="fld"><span>Имя</span><input class="inp" name="name" placeholder="Анна, бариста" maxlength="60" required></label>
+          <label class="fld"><span>Почта — это логин</span><input class="inp" name="email" type="email" placeholder="anna@mail.ru" required></label>
+          <label class="fld"><span>Временный пароль — не короче 8</span><input class="inp" name="pass" type="text" autocomplete="off" minlength="8" required></label>
+          <label class="fld"><span>Роль</span><select class="inp" name="role"><option value="staff">Сотрудник</option><option value="admin">Администратор</option></select></label>
+        </div>
+        <button class="btn btn--main" type="submit"><svg><use href="#plus"/></svg>Создать вход</button>
+      </form>
+      <div id="staffList"></div>
+    </section>
+
     <!-- ---------- УВЕДОМЛЕНИЯ ---------- -->
     <section class="scr" id="s-notify" hidden>
       <div class="ph"><div><span class="eyebrow">новые брони и записи</span><h1>Уведомления</h1><p>Куда присылать новые брони, заказы и записи на мероприятия.</p></div></div>
@@ -270,6 +300,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
     <a href="#events" data-s="events"><svg><use href="#star"/></svg>События</a>
     <a href="#content" data-s="content"><svg><use href="#image"/></svg>Фото</a>
     <a href="#notify" data-s="notify"><svg><use href="#bell"/></svg>Уведомл.</a>
+    <a href="#staff" data-s="staff"><svg><use href="#users"/></svg>Команда</a>
   </nav>
 </div>
 <div class="ovl" id="ovl"></div>

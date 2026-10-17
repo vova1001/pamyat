@@ -14,3 +14,5 @@ export type Notification = S['Notification'];
 export type Checkout = S['Checkout'];
 export type PaymentStatus = S['PaymentStatus'];
 export type ApiError = S['Error'];
+export type Me = S['Me'];
+export type Staff = S['Staff'];

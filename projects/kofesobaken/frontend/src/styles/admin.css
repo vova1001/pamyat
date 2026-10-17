@@ -359,9 +359,10 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
 /* ---------- дополнения для рабочего кабинета ---------- */
-/* шесть разделов в нижнем меню телефона (добавлены «Заказы») */
-.tabbar{grid-template-columns:repeat(6,1fr)}
+/* нижнее меню телефона: столько колонок, сколько разделов доступно роли (администратор — 7, сотрудник — 4) */
+.tabbar{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:1fr}
 .tabbar a{font-size:10px}
+.tabbar a[hidden],.snav a[hidden]{display:none}
 .btn:disabled{opacity:.6;cursor:progress}
 .bubble+.bubble-btns+.bubble,.bubble-btns+.bubble{margin-top:12px}
 .bubble__body{white-space:pre-line}
