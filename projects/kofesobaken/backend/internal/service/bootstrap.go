@@ -68,15 +68,15 @@ func (s *Service) Bootstrap(ctx context.Context, adminEmail, adminPassword strin
 // defaultMenu — меню из согласованного эскиза; цены примерные (подобраны по рынку), заказчик подтвердит.
 func defaultMenu() []store.CreateMenuItemParams {
 	return []store.CreateMenuItemParams{
-		{Name: "Эспрессо", Description: "Короткий и плотный — для бодрого старта", PriceKop: 300_00, Category: "black", Visible: true},
+		{Name: "Эспрессо", Photo: "/img/cup-wood.jpg", Description: "Короткий и плотный — для бодрого старта", PriceKop: 300_00, Category: "black", Visible: true},
 		{Name: "Американо", Description: "Эспрессо и горячая вода", PriceKop: 300_00, Category: "black", Visible: true},
-		{Name: "Капучино", Description: "Эспрессо и бархатная молочная пена", PriceKop: 380_00, Category: "milk", Visible: true},
-		{Name: "Латте", Description: "Мягкий, много молока", PriceKop: 400_00, Category: "milk", Visible: true},
+		{Name: "Капучино", Photo: "/img/latte-pour.jpg", Description: "Эспрессо и бархатная молочная пена", PriceKop: 380_00, Category: "milk", Visible: true},
+		{Name: "Латте", Photo: "/img/latte-glass.jpg", Description: "Мягкий, много молока", PriceKop: 400_00, Category: "milk", Visible: true},
 		{Name: "Флэт уайт", Description: "Двойной эспрессо и немного молока — крепче латте", PriceKop: 420_00, Category: "milk", Visible: true},
 		{Name: "Раф", Description: "Эспрессо, сливки и ванильный сахар", PriceKop: 480_00, Category: "milk", Visible: true},
 		{Name: "Какао", Description: "Тёплое и шоколадное", PriceKop: 380_00, Category: "other", Visible: true},
 		{Name: "Чай", Description: "Чёрный, зелёный или травяной", PriceKop: 300_00, Category: "other", Visible: true},
-		{Name: "Авторский напиток", Description: "[УТОЧНИТЬ: название и состав]", PriceKop: 550_00, Category: "milk", Visible: true, Signature: true},
+		{Name: "Авторский напиток", Photo: "/img/iced-latte.jpg", Description: "[УТОЧНИТЬ: название и состав]", PriceKop: 550_00, Category: "milk", Visible: true, Signature: true},
 	}
 }
 

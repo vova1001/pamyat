@@ -1,0 +1,54 @@
+# Проверки на каждый pull request: бэк (линтеры, тесты на PostgreSQL), фронт (типы, сборка), e2e на Docker Compose.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: test, POSTGRES_PASSWORD: test, POSTGRES_DB: test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U test" --health-interval 2s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.24", cache-dependency-path: backend/go.sum }
+      - run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - uses: golangci/golangci-lint-action@v6
+        with: { working-directory: backend }
+      - run: go test -p 1 -coverpkg=./internal/service,./internal/store,./internal/httpapi,./internal/payments -coverprofile=c.out ./...
+        env: { TEST_DATABASE_URL: "postgres://test:test@localhost:5432/test?sslmode=disable" }
+      - run: go tool cover -func=c.out | tail -1
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npx astro check
+      - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - run: make env && docker compose up --build -d --wait
+        env: { REGISTRY: docker.io/library }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: cd frontend && npm ci && npx playwright install --with-deps chromium
+      - run: make e2e
+      - if: failure()
+        run: docker compose logs
