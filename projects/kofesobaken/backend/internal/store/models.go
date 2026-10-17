@@ -12,10 +12,17 @@ import (
 )
 
 type Admin struct {
-	ID           int64     `json:"id"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"password_hash"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID                 int64       `json:"id"`
+	Email              string      `json:"email"`
+	PasswordHash       string      `json:"password_hash"`
+	CreatedAt          time.Time   `json:"created_at"`
+	Name               string      `json:"name"`
+	Role               string      `json:"role"`
+	Active             bool        `json:"active"`
+	MustChangePassword bool        `json:"must_change_password"`
+	SetupTokenHash     pgtype.Text `json:"setup_token_hash"`
+	SetupExpiresAt     *time.Time  `json:"setup_expires_at"`
+	LastLoginAt        *time.Time  `json:"last_login_at"`
 }
 
 type Booking struct {

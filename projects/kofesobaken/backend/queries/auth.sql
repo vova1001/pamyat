@@ -1,21 +1,47 @@
 -- name: GetAdminByEmail :one
 SELECT * FROM admins WHERE email = $1;
 
--- name: UpsertAdmin :one
-INSERT INTO admins (email, password_hash) VALUES ($1, $2)
-ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash
+-- name: GetAdminByID :one
+SELECT * FROM admins WHERE id = $1;
+
+-- name: GetAdminBySetupToken :one
+SELECT * FROM admins WHERE setup_token_hash = $1 AND setup_expires_at > now();
+
+-- Администратор из окружения: создаётся, если его нет; пароль меняется, только если передан.
+-- name: EnsureAdmin :one
+INSERT INTO admins (email, password_hash, role, name) VALUES ($1, $2, 'admin', 'Администратор')
+ON CONFLICT (email) DO UPDATE SET
+    role = 'admin', active = TRUE,
+    password_hash = CASE WHEN EXCLUDED.password_hash <> '' THEN EXCLUDED.password_hash ELSE admins.password_hash END
 RETURNING *;
+
+-- name: SetSetupToken :exec
+UPDATE admins SET setup_token_hash = $2, setup_expires_at = $3 WHERE id = $1;
+
+-- Пароль задан самим человеком: временный пароль и ссылка настройки больше не действуют.
+-- name: SetOwnPassword :exec
+UPDATE admins SET password_hash = $2, must_change_password = FALSE, setup_token_hash = NULL, setup_expires_at = NULL
+WHERE id = $1;
+
+-- name: TouchLogin :exec
+UPDATE admins SET last_login_at = now() WHERE id = $1;
 
 -- name: CreateSession :exec
 INSERT INTO sessions (token_hash, admin_id, expires_at) VALUES ($1, $2, $3);
 
 -- name: GetSession :one
-SELECT s.token_hash, s.expires_at, a.id AS admin_id, a.email
+SELECT s.token_hash, s.expires_at, a.id AS admin_id, a.email, a.name, a.role, a.must_change_password
 FROM sessions s JOIN admins a ON a.id = s.admin_id
-WHERE s.token_hash = $1 AND s.expires_at > now();
+WHERE s.token_hash = $1 AND s.expires_at > now() AND a.active;
 
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE token_hash = $1;
+
+-- name: DeleteAdminSessions :exec
+DELETE FROM sessions WHERE admin_id = $1;
+
+-- name: DeleteOtherSessions :exec
+DELETE FROM sessions WHERE admin_id = $1 AND token_hash <> $2;
 
 -- name: DeleteExpiredSessions :exec
 DELETE FROM sessions WHERE expires_at <= now();

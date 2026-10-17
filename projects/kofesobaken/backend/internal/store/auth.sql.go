@@ -8,6 +8,8 @@ package store
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createSession = `-- name: CreateSession :exec
@@ -25,12 +27,35 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) er
 	return err
 }
 
+const deleteAdminSessions = `-- name: DeleteAdminSessions :exec
+DELETE FROM sessions WHERE admin_id = $1
+`
+
+func (q *Queries) DeleteAdminSessions(ctx context.Context, adminID int64) error {
+	_, err := q.db.Exec(ctx, deleteAdminSessions, adminID)
+	return err
+}
+
 const deleteExpiredSessions = `-- name: DeleteExpiredSessions :exec
 DELETE FROM sessions WHERE expires_at <= now()
 `
 
 func (q *Queries) DeleteExpiredSessions(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, deleteExpiredSessions)
+	return err
+}
+
+const deleteOtherSessions = `-- name: DeleteOtherSessions :exec
+DELETE FROM sessions WHERE admin_id = $1 AND token_hash <> $2
+`
+
+type DeleteOtherSessionsParams struct {
+	AdminID   int64  `json:"admin_id"`
+	TokenHash string `json:"token_hash"`
+}
+
+func (q *Queries) DeleteOtherSessions(ctx context.Context, arg DeleteOtherSessionsParams) error {
+	_, err := q.db.Exec(ctx, deleteOtherSessions, arg.AdminID, arg.TokenHash)
 	return err
 }
 
@@ -43,8 +68,41 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash string) error {
 	return err
 }
 
+const ensureAdmin = `-- name: EnsureAdmin :one
+INSERT INTO admins (email, password_hash, role, name) VALUES ($1, $2, 'admin', 'Администратор')
+ON CONFLICT (email) DO UPDATE SET
+    role = 'admin', active = TRUE,
+    password_hash = CASE WHEN EXCLUDED.password_hash <> '' THEN EXCLUDED.password_hash ELSE admins.password_hash END
+RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at
+`
+
+type EnsureAdminParams struct {
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+}
+
+// Администратор из окружения: создаётся, если его нет; пароль меняется, только если передан.
+func (q *Queries) EnsureAdmin(ctx context.Context, arg EnsureAdminParams) (Admin, error) {
+	row := q.db.QueryRow(ctx, ensureAdmin, arg.Email, arg.PasswordHash)
+	var i Admin
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.Name,
+		&i.Role,
+		&i.Active,
+		&i.MustChangePassword,
+		&i.SetupTokenHash,
+		&i.SetupExpiresAt,
+		&i.LastLoginAt,
+	)
+	return i, err
+}
+
 const getAdminByEmail = `-- name: GetAdminByEmail :one
-SELECT id, email, password_hash, created_at FROM admins WHERE email = $1
+SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at FROM admins WHERE email = $1
 `
 
 func (q *Queries) GetAdminByEmail(ctx context.Context, email string) (Admin, error) {
@@ -55,21 +113,77 @@ func (q *Queries) GetAdminByEmail(ctx context.Context, email string) (Admin, err
 		&i.Email,
 		&i.PasswordHash,
 		&i.CreatedAt,
+		&i.Name,
+		&i.Role,
+		&i.Active,
+		&i.MustChangePassword,
+		&i.SetupTokenHash,
+		&i.SetupExpiresAt,
+		&i.LastLoginAt,
+	)
+	return i, err
+}
+
+const getAdminByID = `-- name: GetAdminByID :one
+SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at FROM admins WHERE id = $1
+`
+
+func (q *Queries) GetAdminByID(ctx context.Context, id int64) (Admin, error) {
+	row := q.db.QueryRow(ctx, getAdminByID, id)
+	var i Admin
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.Name,
+		&i.Role,
+		&i.Active,
+		&i.MustChangePassword,
+		&i.SetupTokenHash,
+		&i.SetupExpiresAt,
+		&i.LastLoginAt,
+	)
+	return i, err
+}
+
+const getAdminBySetupToken = `-- name: GetAdminBySetupToken :one
+SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at FROM admins WHERE setup_token_hash = $1 AND setup_expires_at > now()
+`
+
+func (q *Queries) GetAdminBySetupToken(ctx context.Context, setupTokenHash pgtype.Text) (Admin, error) {
+	row := q.db.QueryRow(ctx, getAdminBySetupToken, setupTokenHash)
+	var i Admin
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.Name,
+		&i.Role,
+		&i.Active,
+		&i.MustChangePassword,
+		&i.SetupTokenHash,
+		&i.SetupExpiresAt,
+		&i.LastLoginAt,
 	)
 	return i, err
 }
 
 const getSession = `-- name: GetSession :one
-SELECT s.token_hash, s.expires_at, a.id AS admin_id, a.email
+SELECT s.token_hash, s.expires_at, a.id AS admin_id, a.email, a.name, a.role, a.must_change_password
 FROM sessions s JOIN admins a ON a.id = s.admin_id
-WHERE s.token_hash = $1 AND s.expires_at > now()
+WHERE s.token_hash = $1 AND s.expires_at > now() AND a.active
 `
 
 type GetSessionRow struct {
-	TokenHash string    `json:"token_hash"`
-	ExpiresAt time.Time `json:"expires_at"`
-	AdminID   int64     `json:"admin_id"`
-	Email     string    `json:"email"`
+	TokenHash          string    `json:"token_hash"`
+	ExpiresAt          time.Time `json:"expires_at"`
+	AdminID            int64     `json:"admin_id"`
+	Email              string    `json:"email"`
+	Name               string    `json:"name"`
+	Role               string    `json:"role"`
+	MustChangePassword bool      `json:"must_change_password"`
 }
 
 func (q *Queries) GetSession(ctx context.Context, tokenHash string) (GetSessionRow, error) {
@@ -80,29 +194,49 @@ func (q *Queries) GetSession(ctx context.Context, tokenHash string) (GetSessionR
 		&i.ExpiresAt,
 		&i.AdminID,
 		&i.Email,
+		&i.Name,
+		&i.Role,
+		&i.MustChangePassword,
 	)
 	return i, err
 }
 
-const upsertAdmin = `-- name: UpsertAdmin :one
-INSERT INTO admins (email, password_hash) VALUES ($1, $2)
-ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash
-RETURNING id, email, password_hash, created_at
+const setOwnPassword = `-- name: SetOwnPassword :exec
+UPDATE admins SET password_hash = $2, must_change_password = FALSE, setup_token_hash = NULL, setup_expires_at = NULL
+WHERE id = $1
 `
 
-type UpsertAdminParams struct {
-	Email        string `json:"email"`
+type SetOwnPasswordParams struct {
+	ID           int64  `json:"id"`
 	PasswordHash string `json:"password_hash"`
 }
 
-func (q *Queries) UpsertAdmin(ctx context.Context, arg UpsertAdminParams) (Admin, error) {
-	row := q.db.QueryRow(ctx, upsertAdmin, arg.Email, arg.PasswordHash)
-	var i Admin
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.PasswordHash,
-		&i.CreatedAt,
-	)
-	return i, err
+// Пароль задан самим человеком: временный пароль и ссылка настройки больше не действуют.
+func (q *Queries) SetOwnPassword(ctx context.Context, arg SetOwnPasswordParams) error {
+	_, err := q.db.Exec(ctx, setOwnPassword, arg.ID, arg.PasswordHash)
+	return err
+}
+
+const setSetupToken = `-- name: SetSetupToken :exec
+UPDATE admins SET setup_token_hash = $2, setup_expires_at = $3 WHERE id = $1
+`
+
+type SetSetupTokenParams struct {
+	ID             int64       `json:"id"`
+	SetupTokenHash pgtype.Text `json:"setup_token_hash"`
+	SetupExpiresAt *time.Time  `json:"setup_expires_at"`
+}
+
+func (q *Queries) SetSetupToken(ctx context.Context, arg SetSetupTokenParams) error {
+	_, err := q.db.Exec(ctx, setSetupToken, arg.ID, arg.SetupTokenHash, arg.SetupExpiresAt)
+	return err
+}
+
+const touchLogin = `-- name: TouchLogin :exec
+UPDATE admins SET last_login_at = now() WHERE id = $1
+`
+
+func (q *Queries) TouchLogin(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, touchLogin, id)
+	return err
 }
