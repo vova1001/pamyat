@@ -1,6 +1,7 @@
 ---
 // Страница тестовой оплаты. Это заглушка платёжной системы: настоящая оплата будет на странице
 // самой системы (ЮKassa и т. п.) — сайт данных карт не принимает.
+import '../../styles/fonts.css';
 import '../../styles/site.css';
 import Sprite from '../../components/site/Sprite.astro';
 import { getPayment } from '../../lib/server';
@@ -18,9 +19,6 @@ if (p.status !== 'pending') return Astro.redirect(`/?payment=${p.id}${back}`);
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Оплата — КофеСобакен</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   .pay{min-height:100vh;display:grid;place-items:center;padding:24px var(--pad)}
   .pay .card{width:100%;max-width:460px;display:grid;gap:18px}

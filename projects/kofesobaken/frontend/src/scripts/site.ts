@@ -146,6 +146,7 @@ orderBtn.addEventListener('click', async () => {
   const badPhone = orderPhone.value.replace(/\D/g, '').length < 11, badAddr = delivery && orderAddr.value.trim().length < 5;
   orderPhone.classList.toggle('err', badPhone); orderAddr.classList.toggle('err', badAddr);
   if (badPhone || badAddr) { say(badAddr ? 'Укажите адрес доставки' : 'Укажите телефон'); return; }
+  if (!$<HTMLInputElement>('#orderConsent').checked) { say('Нужно согласие на обработку данных'); return; }
   orderBtn.disabled = true;
   try {
     const c = await api<Checkout>('/orders', { body: {

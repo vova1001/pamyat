@@ -19,7 +19,7 @@ const route = 'https://yandex.ru/maps/?text=' + encodeURIComponent(`${city}, ${c
         <p class="addr__big">{c.address}<br><span style="color:var(--soft);font-size:.6em">{city}</span></p>
         <dl>
           <div><dt>Часы работы</dt><dd>{cap(c.hours).replace(/^(Ежедневно)\s/, '$1, ')}</dd></div>
-          <div><dt>Как пройти</dt><dd set:html={c.how_to_get ? rich(c.how_to_get) : '<span class="todo">[УТОЧНИТЬ: вход, ориентир, парковка]</span>'} /></div>
+          {c.how_to_get && <div><dt>Как пройти</dt><dd set:html={rich(c.how_to_get)} /></div>}
         </dl>
         <a class="btn btn--main" target="_blank" rel="noopener" href={route}><svg><use href="#pin"/></svg>Построить маршрут</a>
         <div class="addr__photo curtain"><img src="/img/interior-light.jpg" alt="Светлый уютный зал кофейни (фото для примера)" loading="lazy"></div>

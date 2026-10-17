@@ -3,7 +3,7 @@ import type { Content } from '../../lib/types';
 interface Props { content: Content }
 const { content: c } = Astro.props;
 const delays = ['', ' rv-d1', ' rv-d2', ' rv-d3'];
-const stock = c.dogs.some(d => !d.name);
+const stock = c.dogs.some(d => !d.photo || d.photo.startsWith('/img/')); // фото из комплекта сайта, не загруженные в кабинете
 ---
 <section class="sec dogs" id="dogs">
   <div class="dogs__bgword" aria-hidden="true">гав</div>
@@ -11,7 +11,7 @@ const stock = c.dogs.some(d => !d.name);
     <div class="sec-head">
       <div><span class="num rv">03 — наши собаки</span>
       <h2 class="rv rv-d1">Знакомьтесь — <em>скоро</em></h2></div>
-      <p class="rv rv-d2">Здесь будут портреты собак кофейни: имена, характеры и любимые места в зале. Пока — фото для примера.</p>
+      <p class="rv rv-d2">Здесь будут портреты собак кофейни: имена, характеры и любимые места в зале. Пока — фото и описания для примера.</p>
     </div>
   </div>
   <div class="dogs__row" id="dogsRow">
@@ -19,7 +19,7 @@ const stock = c.dogs.some(d => !d.name);
       <article class={'dog rv' + delays[i % 4]}><span class="dog__bubble">гав!</span>
         <div class="dog__img"><img src={d.photo || '/img/dog-green.jpg'} alt={d.name ? d.name + (d.about ? ', ' + d.about : '') : 'Фото для примера: собака'} loading="lazy"></div>
         {d.name ? <p class="hand">{d.name}</p> : <p class="hand">скоро здесь будут наши</p>}
-        <p class="dog__meta">{d.name ? d.about : <span class="todo">[имя, порода, характер]</span>}</p>
+        {d.name && d.about && <p class="dog__meta">{d.about}</p>}
       </article>
     ))}
   </div>

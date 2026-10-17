@@ -79,6 +79,8 @@ func run() error {
 		return nil
 	}
 
+	go svc.RunRetention(ctx) // данные гостей храним 1 год (политика конфиденциальности)
+
 	var photos media.Store = media.Disk{Dir: cfg.UploadDir}
 	if cfg.MediaStore == "postgres" {
 		photos = media.Postgres{Q: store.New(pool)}

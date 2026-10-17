@@ -435,3 +435,16 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
 /* заказ оплачен — то же состояние «успех», что у брони */
 #orderCard.is-sent .order__form{display:none}
 .btn:disabled{opacity:.6;cursor:progress}
+/* страница политики конфиденциальности: обычный текст на токенах сайта */
+.hdr.is-solid{position:sticky;background:var(--cream)}
+.legal .wrap{max-width:820px}
+.legal h1{font-family:var(--f-head);font-weight:800;font-size:clamp(26px,5vw,40px);line-height:1.1;letter-spacing:-.03em;margin-bottom:14px}
+.legal h2{font-family:var(--f-head);font-weight:700;font-size:20px;margin:34px 0 10px}
+.legal p,.legal li{margin-bottom:10px}
+.legal ul{padding-left:20px}
+.legal a{color:var(--tomato)}
+.legal__table{overflow-x:auto;margin:6px 0 16px}
+.legal table{border-collapse:collapse;min-width:560px;font-size:14px}
+.legal th,.legal td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+.consent a{color:inherit;text-decoration:underline}
+.legal__back{padding:10px 16px;font-size:14px}

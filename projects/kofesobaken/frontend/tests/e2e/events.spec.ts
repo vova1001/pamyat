@@ -31,6 +31,7 @@ test('мероприятие: создать в кабинете → запис�
   await m.locator('#evContact').fill('maria_corgi');
   await m.locator('#evPeople button[data-d="1"]').click();
   await expect(m.locator('#evSubmit')).toContainText('Записаться · 1 400 ₽');
+  await m.locator('input[name="consent"]').check();
   await m.locator('#evSubmit').click();
   await payTest(page);
   await expect(page.locator('#evModal')).toHaveClass(/is-sent/);

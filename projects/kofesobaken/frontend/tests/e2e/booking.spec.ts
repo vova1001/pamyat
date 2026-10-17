@@ -12,6 +12,9 @@ test('бронь столика с предоплатой 500 ₽ → в каб�
   await page.locator('#guests button[data-d="1"]').click();
   await page.locator('label[for="dogY"]').click();
   await expect(f.locator('button[type="submit"]')).toContainText('Забронировать · 500 ₽');
+  await expect(f.locator('input[name="consent"]')).not.toBeChecked(); // согласие не отмечено заранее
+  await expect(f.locator('.consent a[href="/privacy"]')).toBeVisible();
+  await f.locator('input[name="consent"]').check();
   await f.locator('button[type="submit"]').click();
   await payTest(page);
   await expect(page.locator('#bookCard .success')).toBeVisible();
@@ -41,6 +44,7 @@ test('бронь: неверные поля подсвечиваются, без
   await f.locator('input[name="name"]').fill(name);
   await f.locator('input[name="phone"]').fill('9003334466');
   await f.locator('input[name="date"]').fill(inDays(3));
+  await f.locator('input[name="consent"]').check();
   await f.locator('button[type="submit"]').click();
   await page.waitForURL(/\/pay\//);
   await page.locator('#payNo').click();

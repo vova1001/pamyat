@@ -1,29 +1,31 @@
 ---
 import type { Content } from '../../lib/types';
 import { cap } from '../../lib/format';
-interface Props { content: Content }
-const { content: c } = Astro.props;
+interface Props { content: Content; page?: boolean }
+const { content: c, page = false } = Astro.props; // page — отдельная страница: без нижней панели кнопок главной
 ---
 <footer class="ftr">
   <div class="wrap">
     <div class="ftr__grid">
       <div>
-        <a class="logo" href="#top"><svg><use href="#logo"/></svg>КофеСобакен</a>
+        <a class="logo" href="/#top"><svg><use href="#logo"/></svg>КофеСобакен</a>
         <p style="margin-top:14px;color:rgba(255,249,241,.65);max-width:32ch">Кофейня с собаками в Ростове-на-Дону. Приходите сами или со своим питомцем.</p>
       </div>
-      <div><h5>Гостям</h5><ul><li><a href="#menu">Меню</a></li><li><a href="#dogs">Наши собаки</a></li><li><a href="#events">Мероприятия</a></li><li><a href="#booking">Бронь столика</a></li><li><a href="#order">С собой и доставка</a></li></ul></div>
+      <div><h5>Гостям</h5><ul><li><a href="/#menu">Меню</a></li><li><a href="/#dogs">Наши собаки</a></li><li><a href="/#events">Мероприятия</a></li><li><a href="/#booking">Бронь столика</a></li><li><a href="/#order">С собой и доставка</a></li></ul></div>
       <div><h5>Адрес</h5><ul><li>{c.address}</li><li>Ростов-на-Дону</li><li>{cap(c.hours)}</li></ul></div>
       <div><h5>Связь</h5><ul><li><a href="https://t.me/ludi_bydte_dobree" target="_blank" rel="noopener">Telegram</a></li><li><a href="mailto:vovaoleshko05@mail.ru">vovaoleshko05@mail.ru</a></li></ul></div>
     </div>
     <div class="ftr__bottom">
-      <span>© 2026 КофеСобакен · <span class="todo" style="color:var(--espresso)">[реквизиты]</span> · <a href="#top">Политика конфиденциальности</a> <span class="todo" style="color:var(--espresso)">[текст политики]</span></span>
+      <span>© 2026 КофеСобакен · ул. Сарьяна, 34, Ростов-на-Дону · <a href="/privacy">Политика конфиденциальности</a></span>
       <span>Фото — Unsplash, для примера</span>
     </div>
   </div>
 </footer>
 
+{!page && <>
 <div class="mbar" id="mbar">
-  <a class="btn btn--main" href="#booking">Забронировать</a>
-  <a class="btn btn--ghost" href="#order">Кофе с собой</a>
+  <a class="btn btn--main" href="/#booking">Забронировать</a>
+  <a class="btn btn--ghost" href="/#order">Кофе с собой</a>
 </div>
 <div class="toast" id="toast" role="status"></div>
+</>}

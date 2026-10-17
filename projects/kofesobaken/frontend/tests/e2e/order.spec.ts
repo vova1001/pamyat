@@ -27,6 +27,9 @@ test('кабинет: новый напиток → заказ на сайте �
   await expect(page.locator('#total')).toHaveText('1 040 ₽');
   await page.locator('#orderPhone').fill('9001112233');
   await page.locator('#orderBtn').click();
+  await expect(page).not.toHaveURL(/\/pay\//); // без согласия заказ не уходит
+  await page.locator('#orderConsent').check();
+  await page.locator('#orderBtn').click();
   await payTest(page);
   await expect(page.locator('#orderCard .success')).toBeVisible();
   const title = await page.locator('#orderDoneTitle').textContent();
@@ -68,6 +71,7 @@ test('доставка — только от минимальной суммы, 
   await page.locator('#orderBtn').click();
   await expect(page.locator('#orderAddr')).toHaveClass(/err/);
   await page.locator('#orderAddr').fill('ул. Большая Садовая, 10, кв. 5');
+  await page.locator('#orderConsent').check();
   await page.locator('#orderBtn').click();
   await payTest(page);
   await expect(page.locator('#orderCard .success')).toBeVisible();

@@ -81,7 +81,7 @@ func defaultMenu() []store.CreateMenuItemParams {
 		{Name: "Раф", Description: "Эспрессо, сливки и ванильный сахар", PriceKop: 480_00, Category: "milk", Visible: true},
 		{Name: "Какао", Description: "Тёплое и шоколадное", PriceKop: 380_00, Category: "other", Visible: true},
 		{Name: "Чай", Description: "Чёрный, зелёный или травяной", PriceKop: 300_00, Category: "other", Visible: true},
-		{Name: "Авторский напиток", Photo: "/img/iced-latte.jpg", Description: "[УТОЧНИТЬ: название и состав]", PriceKop: 550_00, Category: "milk", Visible: true, Signature: true},
+		{Name: "Лапа на льду", Photo: "/img/iced-latte.jpg", Description: "Холодный латте: двойной эспрессо, молоко, солёная карамель и много льда.", PriceKop: 550_00, Category: "milk", Visible: true, Signature: true},
 	}
 }
 
@@ -93,9 +93,9 @@ func (s *Service) seedDemoEvents(ctx context.Context) error {
 	}
 	t := s.today()
 	demo := []store.CreateEventParams{
-		{Title: "Встреча собаководов", Kind: "встреча", Day: t.AddDate(0, 0, 7), Description: "Знакомимся, болтаем о питомцах за кофе, собаки играют в зале. [УТОЧНИТЬ: программа и цена]", Photo: "/img/guest-with-dog.jpg", Seats: 15, PriceKop: 0, DogsAllowed: true, SignupEnabled: true, Status: "published"},
-		{Title: "Латте-арт: рисуем на пенке", Kind: "мастер-класс", Day: t.AddDate(0, 0, 12), Description: "Бариста покажет, как нарисовать сердце и мордочку собаки. [УТОЧНИТЬ: цена]", Photo: "/img/latte-glass.jpg", Seats: 10, PriceKop: 700_00, DogsAllowed: false, SignupEnabled: true, Status: "published"},
-		{Title: "День рождения собаки", Kind: "праздник", Day: t.AddDate(0, 0, 15), Description: "Торт для собак, колпаки и общее фото. [УТОЧНИТЬ: чей праздник, условия]", Photo: "/img/dog-red.jpg", Seats: 6, PriceKop: 500_00, DogsAllowed: true, SignupEnabled: true, Status: "published"},
+		{Title: "Встреча собаководов", Kind: "встреча", Day: t.AddDate(0, 0, 7), Description: "Знакомимся, болтаем о питомцах за кофе, собаки играют в зале. В программе — знакомство, свободная игра собак и обмен советами. Вход свободный, кофе — по меню. Можно со своей собакой на поводке.", Photo: "/img/guest-with-dog.jpg", Seats: 15, PriceKop: 0, DogsAllowed: true, SignupEnabled: true, Status: "published"},
+		{Title: "Латте-арт: рисуем на пенке", Kind: "мастер-класс", Day: t.AddDate(0, 0, 12), Description: "Бариста покажет, как нарисовать сердце и мордочку собаки. Полтора часа практики: взбиваем молоко, рисуем и пьём свой латте. Опыт не нужен. Участие — 700 ₽.", Photo: "/img/latte-glass.jpg", Seats: 10, PriceKop: 700_00, DogsAllowed: false, SignupEnabled: true, Status: "published"},
+		{Title: "День рождения собаки", Kind: "праздник", Day: t.AddDate(0, 0, 15), Description: "Отмечаем дни рождения собак, у которых праздник в этом месяце. Торт для собак, колпаки и общее фото. Участие — 500 ₽ за собаку с хозяином.", Photo: "/img/dog-red.jpg", Seats: 6, PriceKop: 500_00, DogsAllowed: true, SignupEnabled: true, Status: "published"},
 	}
 	times := []string{"12:00", "19:00", "15:00"}
 	for i, e := range demo {

@@ -25,6 +25,7 @@ const { minKop, radiusKm } = Astro.props;
             <label class="fld"><span>Адрес доставки</span><input class="inp" id="orderAddr" autocomplete="street-address" maxlength="200" placeholder="Улица, дом, квартира"></label>
           </div>
           <label class="fld" style="margin-bottom:14px"><span>Телефон</span><input class="inp" id="orderPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 (900) 000-00-00"></label>
+          <label class="consent" style="margin-bottom:14px"><input type="checkbox" id="orderConsent"><span>Я соглашаюсь на обработку моих персональных данных, включая передачу на серверы в США, на условиях <a href="/privacy" target="_blank">Политики конфиденциальности</a></span></label>
           <div class="total"><span>Итого</span><b id="total">0 ₽</b></div>
           <button class="btn btn--dark" style="width:100%" id="orderBtn" type="button">Оформить заказ<svg><use href="#arrow"/></svg></button>
         </div>
