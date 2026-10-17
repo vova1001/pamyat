@@ -28,3 +28,10 @@
 - Пароль заказчик прислал в чат — нигде не записан и не используется; заказчику рекомендовано сменить его.
 - Выкладка без входа в аккаунты: кнопка «Deploy to Render» (render.yaml, Blueprint) — заказчик сам вставляет строку
   подключения Neon в поле `DATABASE_URL` при развёртывании. Нужен репозиторий с кодом, доступный Render.
+
+## 2026-10-17 · запуск через коннекторы Render и Neon
+- Neon: проект `kofesobaken` (round-base-94602835), регион aws-us-east-2, база neondb. Строка подключения — только в переменных Render.
+- Render: веб-сервис `kofesobaken` (srv-db9r1m3ncjis73ac3seg), регион ohio (рядом с базой), free, Docker из PamyatS/kafesobaka@main,
+  автодеплой. Адрес: https://kofesobaken.onrender.com
+- Вход администратора: olga.oleschko@mail.ru, пароль задаёт сам по одноразовой ссылке (ADMIN_LINK_ON_START=true — после
+  первой настройки выключить).
