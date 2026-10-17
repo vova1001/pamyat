@@ -55,7 +55,16 @@ func run() error {
 		return err
 	}
 
-	pay := payments.NewTestProvider(cfg.PublicURL, cfg.WebhookURL, cfg.WebhookSecret)
+	for _, w := range cfg.Warnings {
+		slog.Warn(w)
+	}
+	var pay payments.Provider = payments.NewTestProvider(cfg.PublicURL, cfg.WebhookURL, cfg.WebhookSecret)
+	if cfg.PaymentProvider == "yookassa" {
+		yk := payments.NewYooKassa(cfg.YooKassaShopID, cfg.YooKassaSecret)
+		yk.Receipt, yk.VATCode = cfg.YooKassaReceipt, cfg.YooKassaVATCode
+		pay = yk
+		slog.Info("оплата: ЮKassa", "test_shop", yk.TestMode(), "receipt", yk.Receipt)
+	}
 	svc := service.New(pool, pay, channels(cfg), cfg.Location)
 	svc.SetPublicURL(cfg.PublicURL)
 	svc.SetAdminPasswordTemporary(cfg.AdminPassTemp)

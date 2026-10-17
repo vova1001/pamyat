@@ -44,17 +44,17 @@ func Sign(secret, body []byte) string {
 	return hex.EncodeToString(m.Sum(nil))
 }
 
-func (p *TestProvider) ParseWebhook(h http.Header, body []byte) (Event, error) {
+func (p *TestProvider) ParseWebhook(_ context.Context, h http.Header, body []byte) (Event, error) {
 	want := Sign(p.Secret, body)
 	if !hmac.Equal([]byte(want), []byte(h.Get("X-Signature"))) {
 		return Event{}, ErrBadSignature
 	}
 	var e Event
 	if err := json.Unmarshal(body, &e); err != nil {
-		return Event{}, fmt.Errorf("разбор уведомления: %w", err)
+		return Event{}, fmt.Errorf("%w: %v", ErrMalformed, err)
 	}
 	if e.Type != EventSucceeded && e.Type != EventCanceled {
-		return Event{}, fmt.Errorf("неизвестное событие %q", e.Type)
+		return Event{}, fmt.Errorf("%w: событие %q", ErrMalformed, e.Type)
 	}
 	return e, nil
 }

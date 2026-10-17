@@ -84,7 +84,7 @@ func newEnv(t *testing.T) *env {
 	e.svc = service.New(testPool, e.pay, []notify.Channel{e.email, e.tg}, msk)
 	e.hook = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		ev, err := e.pay.ParseWebhook(r.Header, body)
+		ev, err := e.pay.ParseWebhook(r.Context(), r.Header, body)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return

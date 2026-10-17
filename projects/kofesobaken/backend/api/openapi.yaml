@@ -78,7 +78,7 @@ paths:
   /payments/{paymentId}:
     get:
       tags: [payments]
-      summary: Статус платежа (для страницы возврата)
+      summary: Статус платежа (для страницы возврата). Платёж ждёт оплаты — сервер сначала спрашивает статус у платёжной системы (ЮKassa)
       parameters: [{ $ref: "#/components/parameters/PaymentID" }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PaymentStatus" } } } }
@@ -87,14 +87,22 @@ paths:
   /payments/webhook:
     post:
       tags: [payments]
-      summary: Уведомление платёжной системы. Подпись — заголовок X-Signature (HMAC-SHA256 тела)
+      summary: >-
+        Уведомление платёжной системы. Тестовая заглушка — тело PaymentWebhook, подпись X-Signature (HMAC-SHA256 тела).
+        ЮKassa — тело YooKassaNotification без подписи: статус, сумма и наш id берутся повторным запросом объекта к API ЮKassa
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: "#/components/schemas/PaymentWebhook" } } }
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - { $ref: "#/components/schemas/PaymentWebhook" }
+                - { $ref: "#/components/schemas/YooKassaNotification" }
       responses:
-        "200": { description: Принято (повторное уведомление — тоже 200) }
+        "200": { description: Принято (повторное уведомление и событие без действий — тоже 200) }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "502": { description: "Платёжная система не ответила на проверку — уведомление придёт повторно", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /payments/test/{paymentId}/pay:
     post:
@@ -674,6 +682,13 @@ components:
         payment_id: { type: string, format: uuid }
         provider_payment_id: { type: string }
         amount_kop: { type: integer, format: int64 }
+    YooKassaNotification:
+      type: object
+      required: [type, event, object]
+      properties:
+        type: { type: string, enum: [notification] }
+        event: { type: string, description: "обрабатываются payment.succeeded, payment.canceled, refund.succeeded; остальные — 200 без действий" }
+        object: { type: object, required: [id], properties: { id: { type: string } } }
 
     Login:
       type: object

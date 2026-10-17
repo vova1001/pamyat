@@ -104,13 +104,23 @@ func (s *Server) paymentWebhook(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "bad_request", "Не удалось прочитать уведомление", nil)
 		return
 	}
-	ev, err := s.pay.ParseWebhook(r.Header, body)
+	ev, err := s.pay.ParseWebhook(r.Context(), r.Header, body)
 	if errors.Is(err, payments.ErrBadSignature) {
 		slog.Warn("уведомление об оплате с неверной подписью", "ip", r.RemoteAddr)
 		writeErr(w, http.StatusUnauthorized, "bad_signature", "Неверная подпись", nil)
 		return
 	}
+	if errors.Is(err, payments.ErrIgnored) {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored"}) // 200 — иначе платёжная система будет повторять
+		return
+	}
 	if err != nil {
+		if !errors.Is(err, payments.ErrMalformed) {
+			// Платёжная система не ответила — 502: уведомление придёт повторно.
+			slog.Warn("уведомление об оплате: проверка не удалась", "err", err)
+			writeErr(w, http.StatusBadGateway, "provider_unavailable", "Платёжная система недоступна", nil)
+			return
+		}
 		writeErr(w, http.StatusBadRequest, "bad_request", "Неверное уведомление", nil)
 		return
 	}

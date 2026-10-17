@@ -216,7 +216,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Статус платежа (для страницы возврата) */
+        /** Статус платежа (для страницы возврата). Платёж ждёт оплаты — сервер сначала спрашивает статус у платёжной системы (ЮKassa) */
         get: {
             parameters: {
                 query?: never;
@@ -257,7 +257,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Уведомление платёжной системы. Подпись — заголовок X-Signature (HMAC-SHA256 тела) */
+        /** Уведомление платёжной системы. Тестовая заглушка — тело PaymentWebhook, подпись X-Signature (HMAC-SHA256 тела). ЮKassa — тело YooKassaNotification без подписи: статус, сумма и наш id берутся повторным запросом объекта к API ЮKassa */
         post: {
             parameters: {
                 query?: never;
@@ -267,11 +267,11 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["PaymentWebhook"];
+                    "application/json": components["schemas"]["PaymentWebhook"] | components["schemas"]["YooKassaNotification"];
                 };
             };
             responses: {
-                /** @description Принято (повторное уведомление — тоже 200) */
+                /** @description Принято (повторное уведомление и событие без действий — тоже 200) */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -280,6 +280,15 @@ export interface paths {
                 };
                 400: components["responses"]["Error"];
                 401: components["responses"]["Error"];
+                /** @description Платёжная система не ответила на проверку — уведомление придёт повторно */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -1953,6 +1962,15 @@ export interface components {
             provider_payment_id: string;
             /** Format: int64 */
             amount_kop: number;
+        };
+        YooKassaNotification: {
+            /** @enum {string} */
+            type: "notification";
+            /** @description обрабатываются payment.succeeded, payment.canceled, refund.succeeded; остальные — 200 без действий */
+            event: string;
+            object: {
+                id: string;
+            };
         };
         Login: {
             email: string;

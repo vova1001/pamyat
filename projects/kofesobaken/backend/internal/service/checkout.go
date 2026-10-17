@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -29,8 +31,13 @@ func createPayment(ctx context.Context, q *store.Queries, provider, kind string,
 }
 
 // startPayment регистрирует платёж в платёжной системе и возвращает ссылку на оплату.
-func (s *Service) startPayment(ctx context.Context, p store.Payment, c *Checkout) error {
-	res, err := s.pay.Create(ctx, payments.CreateRequest{PaymentID: p.ID, AmountKop: p.AmountKop, Description: p.Description})
+// phone — телефон гостя, если есть (для чека, когда его отправляет платёжная система).
+func (s *Service) startPayment(ctx context.Context, p store.Payment, c *Checkout, phone string) error {
+	back := map[string]string{"booking": "#booking", "order": "#order", "signup": "#events"}[p.Kind]
+	res, err := s.pay.Create(ctx, payments.CreateRequest{
+		PaymentID: p.ID, AmountKop: p.AmountKop, Description: p.Description, Phone: phone,
+		ReturnURL: s.publicURL + "/?payment=" + p.ID.String() + back,
+	})
 	if err != nil {
 		return fmt.Errorf("создание платежа: %w", err)
 	}
@@ -137,7 +144,7 @@ func (s *Service) CreateOrder(ctx context.Context, in OrderInput) (Checkout, err
 	if err != nil {
 		return Checkout{}, err
 	}
-	return c, s.startPayment(ctx, p, &c)
+	return c, s.startPayment(ctx, p, &c, phone)
 }
 
 // ---------- бронь столика ----------
@@ -207,7 +214,7 @@ func (s *Service) CreateBooking(ctx context.Context, in BookingInput) (Checkout,
 	if err != nil {
 		return Checkout{}, err
 	}
-	return c, s.startPayment(ctx, p, &c)
+	return c, s.startPayment(ctx, p, &c, phone)
 }
 
 // ---------- запись на мероприятие ----------
@@ -307,7 +314,11 @@ func (s *Service) CreateSignup(ctx context.Context, eventID int64, in SignupInpu
 		s.notifySignup(ctx, ev, su)
 		return c, nil
 	}
-	return c, s.startPayment(ctx, p, &c)
+	phone := ""
+	if in.Via == "phone" {
+		phone = contact
+	}
+	return c, s.startPayment(ctx, p, &c, phone)
 }
 
 // ---------- уведомление платёжной системы ----------
@@ -325,9 +336,34 @@ func toStatus(p store.Payment) PaymentStatus {
 	return PaymentStatus{ID: p.ID, Kind: p.Kind, TargetID: p.TargetID, AmountKop: p.AmountKop, Description: p.Description, Status: p.Status}
 }
 
+// Payment — статус платежа. Если платёж ещё ждёт оплаты, а платёжная система умеет отвечать о статусе
+// (ЮKassa), — спрашиваем её: гость вернулся на сайт раньше уведомления или сервер спал.
 func (s *Service) Payment(ctx context.Context, id uuid.UUID) (PaymentStatus, error) {
 	p, err := s.q.GetPayment(ctx, id)
 	if err != nil {
+		return PaymentStatus{}, notFound(err)
+	}
+	ch, ok := s.pay.(payments.Checker)
+	if !ok || p.Status != "pending" || p.ProviderPaymentID == "" {
+		return toStatus(p), nil
+	}
+	cctx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
+	e, err := ch.Check(cctx, p.ProviderPaymentID)
+	if err != nil {
+		if !errors.Is(err, payments.ErrIgnored) {
+			slog.Warn("проверка статуса платежа", "payment_id", p.ID, "err", err)
+		}
+		return toStatus(p), nil
+	}
+	if e.PaymentID != p.ID {
+		slog.Warn("проверка статуса платежа: чужой платёж", "payment_id", p.ID)
+		return toStatus(p), nil
+	}
+	if err := s.HandlePaymentEvent(ctx, e); err != nil {
+		slog.Warn("проверка статуса платежа", "payment_id", p.ID, "err", err)
+	}
+	if p, err = s.q.GetPayment(ctx, id); err != nil {
 		return PaymentStatus{}, notFound(err)
 	}
 	return toStatus(p), nil
@@ -340,6 +376,13 @@ func (s *Service) HandlePaymentEvent(ctx context.Context, e payments.Event) erro
 		p, err := q.GetPaymentForUpdate(ctx, e.PaymentID)
 		if err != nil {
 			return notFound(err)
+		}
+		if e.Type == payments.EventRefunded {
+			// Возврат прошёл (с сайта при отмене брони или вручную в кабинете платёжной системы).
+			if p.Status != "succeeded" {
+				return nil // уже отмечен или платежа не было
+			}
+			return q.SetPaymentStatus(ctx, store.SetPaymentStatusParams{ID: p.ID, Status: "refunded"})
 		}
 		if p.Status != "pending" {
 			return nil // уже обработано — идемпотентность
@@ -421,7 +464,7 @@ func (s *Service) simulate(ctx context.Context, id uuid.UUID, ev string) (Paymen
 	return s.Payment(ctx, id)
 }
 
-// refund возвращает деньги через платёжную систему (сейчас — заглушка).
+// refund возвращает деньги через платёжную систему.
 func (s *Service) refund(ctx context.Context, q *store.Queries, kind string, target int64) error {
 	p, err := q.GetPaymentByTarget(ctx, store.GetPaymentByTargetParams{Kind: kind, TargetID: target})
 	if err != nil {

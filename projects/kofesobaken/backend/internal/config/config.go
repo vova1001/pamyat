@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +32,11 @@ type Config struct {
 	ResendAPIKey     string // почта через Resend; пусто — письма только в журнал
 	MailFrom         string // отправитель; до подтверждения домена — onboarding@resend.dev
 	TelegramToken    string // бот Telegram; пусто — сообщения только в журнал
+	YooKassaShopID   string // ЮKassa: shopId магазина (тестового или боевого)
+	YooKassaSecret   string // ЮKassa: секретный ключ (test_… — тестовый магазин, live_… — боевой)
+	YooKassaReceipt  bool   // чек 54-ФЗ через ЮKassa (для ИП); самозанятый — false, чек в «Мой налог»
+	YooKassaVATCode  int    // ставка НДС в чеке ЮKassa: 1 — без НДС
+	Warnings         []string
 }
 
 func get(k, def string) string {
@@ -60,7 +66,15 @@ func Load() (Config, error) {
 		ResendAPIKey:     os.Getenv("RESEND_API_KEY"),
 		MailFrom:         get("MAIL_FROM", notify.DefaultMailFrom),
 		TelegramToken:    os.Getenv("TELEGRAM_BOT_TOKEN"),
+		YooKassaShopID:   get("YOOKASSA_SHOP_ID", ""),
+		YooKassaSecret:   strings.TrimSpace(os.Getenv("YOOKASSA_SECRET_KEY")),
+		YooKassaReceipt:  get("YOOKASSA_RECEIPT", "false") == "true",
 	}
+	vat, err := strconv.Atoi(get("YOOKASSA_VAT_CODE", "1"))
+	if err != nil || vat < 1 || vat > 12 {
+		return c, errors.New("YOOKASSA_VAT_CODE: число от 1 до 12")
+	}
+	c.YooKassaVATCode = vat
 	loc, err := time.LoadLocation(get("CAFE_TZ", "Europe/Moscow"))
 	if err != nil {
 		return c, err
@@ -78,8 +92,16 @@ func Load() (Config, error) {
 	if c.MediaStore != "disk" && c.MediaStore != "postgres" {
 		return c, errors.New("MEDIA_STORE: disk или postgres")
 	}
-	if c.PaymentProvider != "test" {
-		return c, errors.New("PAYMENT_PROVIDER: пока доступна только тестовая заглушка (test)")
+	switch c.PaymentProvider {
+	case "test":
+	case "yookassa":
+		if c.YooKassaShopID == "" || c.YooKassaSecret == "" {
+			// Ключей ещё нет — работаем как раньше, с тестовой страницей оплаты.
+			c.Warnings = append(c.Warnings, "PAYMENT_PROVIDER=yookassa, но YOOKASSA_SHOP_ID или YOOKASSA_SECRET_KEY не заданы — включена тестовая страница оплаты")
+			c.PaymentProvider = "test"
+		}
+	default:
+		return c, errors.New("PAYMENT_PROVIDER: test или yookassa")
 	}
 	return c, nil
 }
