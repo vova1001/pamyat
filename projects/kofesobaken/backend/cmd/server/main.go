@@ -2,6 +2,7 @@
 //
 //	server             — запуск
 //	server admin-link  — новая одноразовая ссылка входа администратора (забыл пароль): пароль задаётся заново
+//	ADMIN_LINK_ON_START=true — то же при каждом старте (хостинг без консоли, например бесплатный Render)
 package main
 
 import (
@@ -19,9 +20,11 @@ import (
 
 	"kofesobaken/backend/internal/config"
 	"kofesobaken/backend/internal/httpapi"
+	"kofesobaken/backend/internal/media"
 	"kofesobaken/backend/internal/notify"
 	"kofesobaken/backend/internal/payments"
 	"kofesobaken/backend/internal/service"
+	"kofesobaken/backend/internal/store"
 	"kofesobaken/backend/migrations"
 )
 
@@ -56,24 +59,33 @@ func run() error {
 	if err := svc.Bootstrap(ctx, cfg.AdminEmail, cfg.AdminPassword, cfg.SeedDemo); err != nil {
 		return err
 	}
-	if len(os.Args) > 1 && os.Args[1] == "admin-link" {
-		code, err := svc.IssueSetupLink(ctx, cfg.AdminEmail)
-		if err != nil {
-			return err
-		}
+	// Ссылка входа администратора в лог (одноразовая, 72 часа; в базе — только хэш):
+	// команда admin-link или ADMIN_LINK_ON_START — всегда новая; иначе — только пока пароль не задан.
+	cmdLink := len(os.Args) > 1 && os.Args[1] == "admin-link"
+	var code string
+	if cmdLink || cfg.AdminLinkOnStart {
+		code, err = svc.IssueSetupLink(ctx, cfg.AdminEmail)
+	} else {
+		code, err = svc.PendingSetup(ctx, cfg.AdminEmail)
+	}
+	if err != nil {
+		return err
+	}
+	if code != "" {
 		logSetupLink(cfg, code)
+	}
+	if cmdLink {
 		return nil
 	}
-	// Пароль администратора ещё не задан — одноразовая ссылка в лог (действует 72 часа, при перезапуске — новая).
-	if code, err := svc.PendingSetup(ctx, cfg.AdminEmail); err != nil {
-		return err
-	} else if code != "" {
-		logSetupLink(cfg, code)
+
+	var photos media.Store = media.Disk{Dir: cfg.UploadDir}
+	if cfg.MediaStore == "postgres" {
+		photos = media.Postgres{Q: store.New(pool)}
 	}
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           httpapi.New(svc, pay, httpapi.Options{UploadDir: cfg.UploadDir, CookieSecure: cfg.CookieSecure}).Routes(),
+		Handler:           httpapi.New(svc, pay, httpapi.Options{Media: photos, CookieSecure: cfg.CookieSecure}).Routes(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -84,7 +96,7 @@ func run() error {
 		defer cancel()
 		_ = srv.Shutdown(sh)
 	}()
-	slog.Info("сервер запущен", "addr", cfg.HTTPAddr, "payments", pay.Name())
+	slog.Info("сервер запущен", "addr", cfg.HTTPAddr, "payments", pay.Name(), "photos", cfg.MediaStore)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
@@ -98,8 +110,15 @@ func logSetupLink(cfg config.Config, code string) {
 }
 
 // connect ждёт базу до 60 секунд — при первом запуске Postgres поднимается дольше сервера.
+// Простаивающие соединения закрываем через 4 минуты: облачная база (Neon) засыпает через 5 и рвёт их сама.
 func connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, url)
+	pc, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return nil, err
+	}
+	pc.MaxConnIdleTime = 4 * time.Minute
+	pc.MaxConns = 5
+	pool, err := pgxpool.NewWithConfig(ctx, pc)
 	if err != nil {
 		return nil, err
 	}

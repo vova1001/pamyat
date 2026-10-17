@@ -71,6 +71,13 @@ type EventSignup struct {
 	PaidAt    *time.Time `json:"paid_at"`
 }
 
+type Medium struct {
+	Name        string    `json:"name"`
+	ContentType string    `json:"content_type"`
+	Data        []byte    `json:"data"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
 type MenuItem struct {
 	ID          int64     `json:"id"`
 	Name        string    `json:"name"`

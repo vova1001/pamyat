@@ -11,6 +11,8 @@
               ├─ /api, /uploads, /healthz → backend (Go :8080) ──► db (PostgreSQL 16)
 ```
 Один адрес для сайта и API — cookie кабинета без CORS. Всё в `docker-compose.yml`.
+Бесплатный старт на Render — те же части в одном образе (`deploy/render/Dockerfile`, nginx на `$PORT`), база Neon,
+фото в PostgreSQL; `render.yaml`, инструкция — `deploy/render.md`.
 
 ## Стек и отступления от стандарта (с причиной)
 | Слой | Выбор |
@@ -21,7 +23,7 @@
 | Бэк | Go 1.24, chi, `log/slog` (JSON), pgx + sqlc, goose (миграции встроены в бинарник, применяются при старте) |
 | Контракт | `backend/api/openapi.yaml`; типы фронта — `openapi-typescript` (`src/lib/api.gen.ts`). Обработчики Go написаны по контракту вручную (без oapi-codegen) — контракт небольшой, проверяется тестами API |
 | Redis | не нужен: нагрузка малая; ограничение частоты форм и входа — в памяти процесса (один сервер). При нескольких серверах — перенести в Redis |
-| Фото | на томе `uploads` (`/data/uploads`), отдаёт backend. Объём — десятки фото, S3 не нужен. Переезд в S3 — заменить сохранение в `handlers.go: upload` |
+| Фото | интерфейс `media.Store` (`backend/internal/media`), выбор — `MEDIA_STORE`: `disk` — том `uploads` (docker compose), `postgres` — таблица `media` (хостинг без диска, Render). Объём — десятки фото. Переезд в S3 — ещё одна реализация `Store` |
 
 ## Модули бэка (`backend/internal/`)
 - `service` — вся логика: меню, заказы, брони, мероприятия и записи, тексты сайта, настройки, уведомления, вход, сотрудники.
@@ -41,6 +43,7 @@
 | `payments` | платёж на бронь/заказ/запись; статус меняется **только по уведомлению** платёжной системы | kind + target_id |
 | `settings` | JSON: тексты и фото сайта, условия доставки, настройки уведомлений | |
 | `notifications` | журнал отправленного (канал, кому, текст, успех) | |
+| `media` | фото из кабинета, если `MEDIA_STORE=postgres` (миграция `00003_media.sql`) | |
 
 Статусы: бронь `awaiting_payment → new → confirmed / cancelled`; заказ `awaiting_payment → new → done / cancelled`;
 запись `awaiting_payment → confirmed` (бесплатная — сразу `confirmed`). Неоплаченное в кабинете не показывается.

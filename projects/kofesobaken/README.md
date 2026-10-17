@@ -24,6 +24,10 @@ docker compose up --build
 Базовые образы берутся с зеркала `mirror.gcr.io` (Docker Hub ограничивает частоту). Другое — `REGISTRY=docker.io/library`.
 За корпоративным прокси с подменой сертификатов: положите его сертификат `*.crt` в `backend/certs/` и `frontend/certs/`.
 
+## Бесплатный старт: Render + Neon
+Один образ `deploy/render/Dockerfile`, Blueprint `render.yaml`, пошагово — `deploy/render.md`.
+Собрать и проверить локально: `docker build --platform linux/amd64 -f deploy/render/Dockerfile -t kofesobaken-render .`
+
 ## Проверки
 ```sh
 make test   # тесты бэка: модульные + интеграционные на PostgreSQL (в Docker), покрытие

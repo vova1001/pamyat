@@ -1,17 +1,19 @@
 package httpapi
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
+	"kofesobaken/backend/internal/media"
 	"kofesobaken/backend/internal/payments"
 	"kofesobaken/backend/internal/service"
 )
@@ -512,36 +514,36 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, err)
 		return
 	}
-	rnd := make([]byte, 12)
-	_, _ = rand.Read(rnd)
-	name := time.Now().UTC().Format("20060102") + "-" + hex.EncodeToString(rnd) + ext
-	if err := os.MkdirAll(s.uploadDir, 0o755); err != nil {
-		fail(w, r, err)
-		return
-	}
-	dst, err := os.Create(filepath.Join(s.uploadDir, name))
+	data, err := io.ReadAll(io.LimitReader(f, maxUpload+1))
 	if err != nil {
 		fail(w, r, err)
 		return
 	}
-	defer dst.Close()
-	if _, err := io.Copy(dst, f); err != nil {
+	rnd := make([]byte, 12)
+	_, _ = rand.Read(rnd)
+	name := time.Now().UTC().Format("20060102") + "-" + hex.EncodeToString(rnd) + ext
+	if err := s.media.Save(r.Context(), name, http.DetectContentType(head[:n]), data); err != nil {
 		fail(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"url": "/uploads/" + name})
 }
 
-// uploadsHandler отдаёт загруженные фото; без списка файлов.
-func uploadsHandler(dir string) http.Handler {
-	fs := http.FileServer(http.Dir(dir))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "" || strings.HasSuffix(r.URL.Path, "/") {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		fs.ServeHTTP(w, r)
-	})
+// serveUpload отдаёт загруженное фото из хранилища; имена — только выданные сервером, без списка файлов.
+func (s *Server) serveUpload(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	f, err := s.media.Open(r.Context(), name)
+	if errors.Is(err, media.ErrNotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		slog.Error("фото не отдаётся", "err", err, "name", name)
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", f.ContentType)
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	http.ServeContent(w, r, name, f.ModTime, bytes.NewReader(f.Data))
 }

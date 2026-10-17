@@ -18,9 +18,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"kofesobaken/backend/internal/httpapi"
+	"kofesobaken/backend/internal/media"
 	"kofesobaken/backend/internal/notify"
 	"kofesobaken/backend/internal/payments"
 	"kofesobaken/backend/internal/service"
+	"kofesobaken/backend/internal/store"
 	"kofesobaken/backend/migrations"
 )
 
@@ -56,6 +58,13 @@ func (c *client) do(method, path string, body any) (int, map[string]any, []byte)
 
 func setup(t *testing.T) (*client, *payments.TestProvider) {
 	t.Helper()
+	c, pay, _ := setupWith(t, nil)
+	return c, pay
+}
+
+// setupWith — сервер с выбранным хранилищем фото (nil — диск во временной папке); pool — чтобы «перезапустить» сервер.
+func setupWith(t *testing.T, photos func(*pgxpool.Pool) media.Store) (*client, *payments.TestProvider, *pgxpool.Pool) {
+	t.Helper()
 	url := os.Getenv("TEST_DATABASE_URL")
 	if url == "" {
 		t.Skip("нужна TEST_DATABASE_URL")
@@ -78,11 +87,15 @@ func setup(t *testing.T) (*client, *payments.TestProvider) {
 	if err := svc.Bootstrap(ctx, "owner@example.com", "pass-123", false); err != nil {
 		t.Fatal(err)
 	}
-	srv := httptest.NewServer(httpapi.New(svc, pay, httpapi.Options{UploadDir: t.TempDir()}).Routes())
+	o := httpapi.Options{UploadDir: t.TempDir()}
+	if photos != nil {
+		o.Media = photos(pool)
+	}
+	srv := httptest.NewServer(httpapi.New(svc, pay, o).Routes())
 	t.Cleanup(srv.Close)
 	pay.WebhookURL = srv.URL + "/api/payments/webhook"
 	jar, _ := cookiejar.New(nil)
-	return &client{t: t, base: srv.URL, http: &http.Client{Jar: jar}}, pay
+	return &client{t: t, base: srv.URL, http: &http.Client{Jar: jar}}, pay, pool
 }
 
 func TestPublicAndAdminFlow(t *testing.T) {
@@ -305,6 +318,31 @@ func TestWebhookSignatureAndBadInput(t *testing.T) {
 
 func TestUpload(t *testing.T) {
 	c, _ := setup(t)
+	testUpload(t, c)
+}
+
+// Фото в PostgreSQL (хостинг без диска): после «перезапуска» — новый сервер на той же базе — фото на месте.
+func TestUploadPostgresSurvivesRestart(t *testing.T) {
+	pg := func(p *pgxpool.Pool) media.Store { return media.Postgres{Q: store.New(p)} }
+	c, pay, pool := setupWith(t, pg)
+	url := testUpload(t, c)
+	loc, _ := time.LoadLocation("Europe/Moscow")
+	svc := service.New(pool, pay, nil, loc)
+	srv2 := httptest.NewServer(httpapi.New(svc, pay, httpapi.Options{Media: pg(pool)}).Routes())
+	defer srv2.Close()
+	res, err := http.Get(srv2.URL + url)
+	if err != nil || res.StatusCode != 200 || res.Header.Get("Content-Type") != "image/png" {
+		t.Fatalf("после перезапуска: %v %v", err, res)
+	}
+	if res, _ := http.Get(srv2.URL + "/uploads/20260101-000000000000000000000000.png"); res.StatusCode != 404 {
+		t.Fatalf("нет такого фото: %d", res.StatusCode)
+	}
+	if res, _ := http.Get(srv2.URL + "/uploads/..%2f..%2fetc%2fpasswd"); res.StatusCode != 404 {
+		t.Fatalf("чужой путь: %d", res.StatusCode)
+	}
+}
+
+func testUpload(t *testing.T, c *client) string {
 	c.do("POST", "/api/admin/login", map[string]string{"email": "owner@example.com", "password": "pass-123"})
 	send := func(name string, data []byte) (int, map[string]any) {
 		var buf bytes.Buffer
@@ -339,6 +377,7 @@ func TestUpload(t *testing.T) {
 	if res.StatusCode != 404 {
 		t.Fatal("список файлов не показываем")
 	}
+	return m["url"].(string)
 }
 
 func TestRateLimiter(t *testing.T) {

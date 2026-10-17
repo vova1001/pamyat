@@ -1,0 +1,32 @@
+# Render Blueprint: один бесплатный веб-сервис из готового образа (deploy/render/Dockerfile).
+# База — Neon (PostgreSQL), строка подключения вводится в Render при создании (sync: false) — в файле её нет.
+# Инструкция — deploy/render.md.
+services:
+  - type: web
+    name: kofesobaken
+    runtime: image
+    image:
+      url: "ghcr.io/[УТОЧНИТЬ: организация студии]/kofesobaken:latest"
+      creds:
+        fromRegistryCreds:
+          name: ghcr-studio # токен GHCR «только чтение», заводится в Render: Workspace Settings → Registry Credentials
+    plan: free
+    region: frankfurt
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_URL # Neon: прямое подключение (не -pooler), с ?sslmode=require
+        sync: false
+      - key: PUBLIC_URL # адрес сайта: https://kofesobaken.onrender.com или свой домен
+        sync: false
+      - key: ADMIN_EMAIL # ADMIN_PASSWORD не задаём: ссылка первого входа администратора придёт в лог сервиса
+        value: vovaoleshko05@mail.ru
+      - key: PAYMENT_PROVIDER
+        value: test
+      - key: PAYMENT_WEBHOOK_SECRET
+        generateValue: true
+      - key: MEDIA_STORE # фото в PostgreSQL — диска на бесплатном Render нет
+        value: postgres
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: SEED_DEMO # примеры мероприятий из эскиза; для боевого сайта — false
+        value: "false"

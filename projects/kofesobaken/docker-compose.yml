@@ -36,6 +36,7 @@ services:
       SEED_DEMO: ${SEED_DEMO:-true}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       UPLOAD_DIR: /data/uploads
+      MEDIA_STORE: ${MEDIA_STORE:-disk}
     volumes:
       - uploads:/data/uploads
     depends_on:

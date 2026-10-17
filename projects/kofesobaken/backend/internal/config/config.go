@@ -11,18 +11,20 @@ import (
 )
 
 type Config struct {
-	HTTPAddr        string
-	DatabaseURL     string
-	PublicURL       string // адрес сайта для гостя (ссылки оплаты и возврата)
-	WebhookURL      string // куда тестовая заглушка оплаты шлёт уведомление
-	AdminEmail      string
-	AdminPassword   string
-	PaymentProvider string
-	WebhookSecret   string
-	UploadDir       string
-	Location        *time.Location
-	CookieSecure    bool
-	SeedDemo        bool
+	HTTPAddr         string
+	DatabaseURL      string
+	PublicURL        string // адрес сайта для гостя (ссылки оплаты и возврата)
+	WebhookURL       string // куда тестовая заглушка оплаты шлёт уведомление
+	AdminEmail       string
+	AdminPassword    string
+	PaymentProvider  string
+	WebhookSecret    string
+	UploadDir        string
+	MediaStore       string // где фото: disk (том uploads) или postgres (хостинг без диска)
+	AdminLinkOnStart bool   // новая ссылка входа администратора при каждом старте (забыл пароль, а консоли нет)
+	Location         *time.Location
+	CookieSecure     bool
+	SeedDemo         bool
 }
 
 func get(k, def string) string {
@@ -34,17 +36,19 @@ func get(k, def string) string {
 
 func Load() (Config, error) {
 	c := Config{
-		HTTPAddr:        get("HTTP_ADDR", ":8080"),
-		DatabaseURL:     get("DATABASE_URL", ""),
-		PublicURL:       strings.TrimRight(get("PUBLIC_URL", "http://localhost:8000"), "/"),
-		WebhookURL:      get("PAYMENT_WEBHOOK_URL", "http://localhost:8080/api/payments/webhook"),
-		AdminEmail:      strings.ToLower(get("ADMIN_EMAIL", "")),
-		AdminPassword:   os.Getenv("ADMIN_PASSWORD"),
-		PaymentProvider: get("PAYMENT_PROVIDER", "test"),
-		WebhookSecret:   os.Getenv("PAYMENT_WEBHOOK_SECRET"),
-		UploadDir:       get("UPLOAD_DIR", "/data/uploads"),
-		CookieSecure:    get("COOKIE_SECURE", "false") == "true",
-		SeedDemo:        get("SEED_DEMO", "false") == "true",
+		HTTPAddr:         get("HTTP_ADDR", ":8080"),
+		DatabaseURL:      get("DATABASE_URL", ""),
+		PublicURL:        strings.TrimRight(get("PUBLIC_URL", "http://localhost:8000"), "/"),
+		WebhookURL:       get("PAYMENT_WEBHOOK_URL", "http://localhost:8080/api/payments/webhook"),
+		AdminEmail:       strings.ToLower(get("ADMIN_EMAIL", "")),
+		AdminPassword:    os.Getenv("ADMIN_PASSWORD"),
+		PaymentProvider:  get("PAYMENT_PROVIDER", "test"),
+		WebhookSecret:    os.Getenv("PAYMENT_WEBHOOK_SECRET"),
+		UploadDir:        get("UPLOAD_DIR", "/data/uploads"),
+		MediaStore:       get("MEDIA_STORE", "disk"),
+		AdminLinkOnStart: get("ADMIN_LINK_ON_START", "false") == "true",
+		CookieSecure:     get("COOKIE_SECURE", "false") == "true",
+		SeedDemo:         get("SEED_DEMO", "false") == "true",
 	}
 	loc, err := time.LoadLocation(get("CAFE_TZ", "Europe/Moscow"))
 	if err != nil {
@@ -59,6 +63,9 @@ func Load() (Config, error) {
 		b := make([]byte, 32)
 		_, _ = rand.Read(b)
 		c.WebhookSecret = hex.EncodeToString(b)
+	}
+	if c.MediaStore != "disk" && c.MediaStore != "postgres" {
+		return c, errors.New("MEDIA_STORE: disk или postgres")
 	}
 	if c.PaymentProvider != "test" {
 		return c, errors.New("PAYMENT_PROVIDER: пока доступна только тестовая заглушка (test)")

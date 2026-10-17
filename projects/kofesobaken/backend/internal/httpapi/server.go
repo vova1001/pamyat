@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
+	"kofesobaken/backend/internal/media"
 	"kofesobaken/backend/internal/payments"
 	"kofesobaken/backend/internal/service"
 )
@@ -26,7 +27,7 @@ const cookieName = "ks_session"
 type Server struct {
 	svc          *service.Service
 	pay          payments.Provider
-	uploadDir    string
+	media        media.Store
 	cookieSecure bool
 	formLimit    *RateLimiter
 	loginLimit   *RateLimiter // неверные пароли с одного адреса
@@ -34,13 +35,17 @@ type Server struct {
 }
 
 type Options struct {
-	UploadDir    string
+	UploadDir    string      // фото на диске, если Media не задан
+	Media        media.Store // где хранить фото (диск, PostgreSQL, потом S3)
 	CookieSecure bool
 }
 
 func New(svc *service.Service, pay payments.Provider, o Options) *Server {
+	if o.Media == nil {
+		o.Media = media.Disk{Dir: o.UploadDir}
+	}
 	return &Server{
-		svc: svc, pay: pay, uploadDir: o.UploadDir, cookieSecure: o.CookieSecure,
+		svc: svc, pay: pay, media: o.Media, cookieSecure: o.CookieSecure,
 		formLimit:  NewRateLimiter(10, time.Minute),   // 10 оформлений в минуту с одного адреса
 		loginLimit: NewRateLimiter(8, 15*time.Minute), // 8 неверных паролей за 15 минут
 		emailLimit: NewRateLimiter(20, 15*time.Minute),
@@ -52,7 +57,7 @@ func (s *Server) Routes() http.Handler {
 	r.Use(realIP, middleware.RequestID, logRequests, middleware.Recoverer)
 
 	r.Get("/healthz", s.health)
-	r.Handle("/uploads/*", http.StripPrefix("/uploads/", uploadsHandler(s.uploadDir)))
+	r.Get("/uploads/{name}", s.serveUpload)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/healthz", s.health)
@@ -218,7 +223,7 @@ func logRequests(next http.Handler) http.Handler {
 		if r.URL.Path == "/healthz" || r.URL.Path == "/api/healthz" {
 			return
 		}
-		slog.Info("http", "method", r.Method, "path", r.URL.Path, "status", ww.Status(), "ms", time.Since(start).Milliseconds(), "request_id", middleware.GetReqID(r.Context()))
+		slog.Info("http", "method", r.Method, "path", r.URL.Path, "status", ww.Status(), "ms", time.Since(start).Milliseconds(), "ip", r.RemoteAddr, "request_id", middleware.GetReqID(r.Context()))
 	})
 }
 
