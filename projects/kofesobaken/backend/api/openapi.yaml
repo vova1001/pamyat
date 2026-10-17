@@ -1,0 +1,604 @@
+openapi: 3.0.3
+info:
+  title: КофеСобакен API
+  version: 1.0.0
+  description: |
+    API сайта и кабинета кофейни. Деньги — в копейках (целые числа). Даты — YYYY-MM-DD, время — HH:MM (местное время кофейни).
+    Кабинет — по сессионной cookie `ks_session` (HttpOnly), выдаётся на /api/admin/login.
+    Ошибка всегда в одном формате — Error.
+servers:
+  - url: /api
+tags:
+  - name: public
+  - name: payments
+  - name: admin
+
+paths:
+  /healthz:
+    get:
+      tags: [public]
+      summary: Проверка живости (сервер и БД)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /site:
+    get:
+      tags: [public]
+      summary: Всё для страницы сайта — тексты, меню, мероприятия, настройки заказа
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Site" } } } }
+
+  /orders:
+    post:
+      tags: [public]
+      summary: Заказ с собой или с доставкой — создаёт заказ и платёж
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/OrderCreate" } } }
+      responses:
+        "201": { description: Создан, ждёт оплаты, content: { application/json: { schema: { $ref: "#/components/schemas/Checkout" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /bookings:
+    post:
+      tags: [public]
+      summary: Бронь столика — создаёт бронь и платёж предоплаты
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/BookingCreate" } } }
+      responses:
+        "201": { description: Создана, ждёт оплаты, content: { application/json: { schema: { $ref: "#/components/schemas/Checkout" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /events/{id}/signups:
+    post:
+      tags: [public]
+      summary: Запись на мероприятие. Платное — с платежом, бесплатное — сразу подтверждена
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/SignupCreate" } } }
+      responses:
+        "201": { description: Создана, content: { application/json: { schema: { $ref: "#/components/schemas/Checkout" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /payments/{paymentId}:
+    get:
+      tags: [payments]
+      summary: Статус платежа (для страницы возврата)
+      parameters: [{ $ref: "#/components/parameters/PaymentID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PaymentStatus" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /payments/webhook:
+    post:
+      tags: [payments]
+      summary: Уведомление платёжной системы. Подпись — заголовок X-Signature (HMAC-SHA256 тела)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PaymentWebhook" } } }
+      responses:
+        "200": { description: Принято (повторное уведомление — тоже 200) }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /payments/test/{paymentId}/pay:
+    post:
+      tags: [payments]
+      summary: Только тестовая заглушка — «оплатить». Заглушка шлёт подписанное уведомление на /payments/webhook
+      parameters: [{ $ref: "#/components/parameters/PaymentID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PaymentStatus" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /payments/test/{paymentId}/cancel:
+    post:
+      tags: [payments]
+      summary: Только тестовая заглушка — «отказаться от оплаты»
+      parameters: [{ $ref: "#/components/parameters/PaymentID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PaymentStatus" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /admin/login:
+    post:
+      tags: [admin]
+      summary: Вход в кабинет
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/Login" } } }
+      responses:
+        "200": { description: OK, ставит cookie, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /admin/logout:
+    post:
+      tags: [admin]
+      responses: { "204": { description: Вышли } }
+  /admin/me:
+    get:
+      tags: [admin]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /admin/bookings:
+    get:
+      tags: [admin]
+      summary: Брони, новые сверху
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Booking" } } } } }
+  /admin/bookings/{id}/confirm:
+    post:
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Booking" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/bookings/{id}/cancel:
+    post:
+      tags: [admin]
+      summary: Отменить бронь (предоплата возвращается через платёжную систему)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Booking" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /admin/orders:
+    get:
+      tags: [admin]
+      summary: Оплаченные заказы, новые сверху
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Order" } } } } }
+  /admin/orders/{id}/done:
+    post:
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Order" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/orders/{id}/cancel:
+    post:
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Order" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /admin/menu:
+    get:
+      tags: [admin]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/MenuItem" } } } } }
+    post:
+      tags: [admin]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/MenuItemInput" } } }
+      responses:
+        "201": { description: Создано, content: { application/json: { schema: { $ref: "#/components/schemas/MenuItem" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+  /admin/menu/{id}:
+    put:
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/MenuItemInput" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MenuItem" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Удалено }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /admin/events:
+    get:
+      tags: [admin]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AdminEvent" } } } } }
+    post:
+      tags: [admin]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/EventInput" } } }
+      responses:
+        "201": { description: Создано, content: { application/json: { schema: { $ref: "#/components/schemas/AdminEvent" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+  /admin/events/{id}:
+    put:
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/EventInput" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdminEvent" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Удалено }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/events/{id}/signups:
+    get:
+      tags: [admin]
+      summary: Записавшиеся (подтверждённые)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Signup" } } } } }
+
+  /admin/content:
+    get:
+      tags: [admin]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Content" } } } }
+    put:
+      tags: [admin]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/Content" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Content" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /admin/settings:
+    get:
+      tags: [admin]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } } }
+    put:
+      tags: [admin]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /admin/notify/test:
+    post:
+      tags: [admin]
+      summary: Проверочное сообщение в канал
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [channel], properties: { channel: { $ref: "#/components/schemas/Channel" } } } } }
+      responses:
+        "200": { description: Отправлено, content: { application/json: { schema: { $ref: "#/components/schemas/Notification" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /admin/telegram/connect:
+    post:
+      tags: [admin]
+      summary: Подключить Telegram (сейчас заглушка — подключает и шлёт проверочное сообщение в журнал)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } } }
+  /admin/telegram/disconnect:
+    post:
+      tags: [admin]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } } }
+
+  /admin/notifications:
+    get:
+      tags: [admin]
+      summary: Журнал отправленных уведомлений, свежие сверху
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Notification" } } } } }
+
+  /admin/uploads:
+    post:
+      tags: [admin]
+      summary: Загрузить фото (JPG, PNG, WebP, до 8 МБ)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
+      responses:
+        "201": { description: OK, content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string } } } } } }
+        "413": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    ID: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    PaymentID: { name: paymentId, in: path, required: true, schema: { type: string, format: uuid } }
+
+  responses:
+    Error:
+      description: Ошибка
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: validation }
+            message: { type: string, example: Проверьте поля формы }
+            fields:
+              type: object
+              additionalProperties: { type: string }
+              description: поле → понятная ошибка
+
+    Health:
+      type: object
+      required: [status]
+      properties: { status: { type: string, example: ok } }
+
+    Category: { type: string, enum: [black, milk, other] }
+    Channel: { type: string, enum: [email, telegram] }
+
+    MenuItem:
+      type: object
+      required: [id, name, description, price_kop, category, photo, visible, signature]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        description: { type: string }
+        price_kop: { type: integer, format: int64 }
+        category: { $ref: "#/components/schemas/Category" }
+        photo: { type: string, description: "URL фото или пусто" }
+        visible: { type: boolean }
+        signature: { type: boolean, description: "метка «фирменный»" }
+    MenuItemInput:
+      type: object
+      required: [name, price_kop, category]
+      properties:
+        name: { type: string, maxLength: 60 }
+        description: { type: string, maxLength: 80 }
+        price_kop: { type: integer, format: int64, minimum: 0 }
+        category: { $ref: "#/components/schemas/Category" }
+        photo: { type: string }
+        visible: { type: boolean, default: true }
+        signature: { type: boolean, default: false }
+
+    PublicEvent:
+      type: object
+      required: [id, title, kind, date, time, description, photo, seats, seats_left, price_kop, dogs_allowed, signup_enabled]
+      properties:
+        id: { type: integer, format: int64 }
+        title: { type: string }
+        kind: { type: string, example: встреча }
+        date: { type: string, format: date }
+        time: { type: string, example: "12:00" }
+        description: { type: string }
+        photo: { type: string }
+        seats: { type: integer }
+        seats_left: { type: integer }
+        price_kop: { type: integer, format: int64 }
+        dogs_allowed: { type: boolean }
+        signup_enabled: { type: boolean }
+    AdminEvent:
+      allOf:
+        - $ref: "#/components/schemas/PublicEvent"
+        - type: object
+          required: [status, taken, past]
+          properties:
+            status: { type: string, enum: [draft, published] }
+            taken: { type: integer, description: "занято мест (оплачено + удерживается на время оплаты)" }
+            past: { type: boolean }
+    EventInput:
+      type: object
+      required: [title, kind, date, time, seats, status]
+      properties:
+        title: { type: string, maxLength: 80 }
+        kind: { type: string, enum: [встреча, мастер-класс, праздник, другое] }
+        date: { type: string, format: date }
+        time: { type: string, example: "19:00" }
+        description: { type: string, maxLength: 200 }
+        photo: { type: string }
+        seats: { type: integer, minimum: 1, maximum: 500 }
+        price_kop: { type: integer, format: int64, minimum: 0 }
+        dogs_allowed: { type: boolean, default: true }
+        signup_enabled: { type: boolean, default: true }
+        status: { type: string, enum: [draft, published] }
+
+    WhyCard:
+      type: object
+      required: [title, text, photo]
+      properties: { title: { type: string }, text: { type: string }, photo: { type: string } }
+    Dog:
+      type: object
+      required: [name, about, photo]
+      properties: { name: { type: string }, about: { type: string }, photo: { type: string } }
+    Content:
+      type: object
+      required: [hero_chip, hero_lead, hero_photo, address, hours, why, dogs, how_to_get]
+      properties:
+        hero_chip: { type: string, maxLength: 80 }
+        hero_lead: { type: string, maxLength: 160 }
+        hero_photo: { type: string }
+        address: { type: string, maxLength: 80 }
+        hours: { type: string, maxLength: 80 }
+        why: { type: array, minItems: 3, maxItems: 3, items: { $ref: "#/components/schemas/WhyCard" } }
+        dogs: { type: array, maxItems: 12, items: { $ref: "#/components/schemas/Dog" } }
+        how_to_get: { type: string, maxLength: 300 }
+
+    Settings:
+      type: object
+      required: [delivery_min_kop, delivery_radius_km, booking_prepay_kop, notify]
+      properties:
+        delivery_min_kop: { type: integer, format: int64, minimum: 0, description: "минимальный заказ на доставку; доставка от этой суммы бесплатная" }
+        delivery_radius_km: { type: integer, minimum: 1, maximum: 50 }
+        booking_prepay_kop: { type: integer, format: int64, description: "предоплата брони (только чтение)" }
+        notify: { $ref: "#/components/schemas/NotifySettings" }
+    NotifySettings:
+      type: object
+      required: [email_enabled, email, telegram_connected, telegram_chat, on_booking, on_signup, on_full, on_order]
+      properties:
+        email_enabled: { type: boolean }
+        email: { type: string }
+        telegram_connected: { type: boolean }
+        telegram_chat: { type: string, example: "@ludi_bydte_dobree" }
+        on_booking: { type: boolean }
+        on_signup: { type: boolean }
+        on_full: { type: boolean }
+        on_order: { type: boolean }
+
+    Site:
+      type: object
+      required: [content, menu, events, order]
+      properties:
+        content: { $ref: "#/components/schemas/Content" }
+        menu: { type: array, items: { $ref: "#/components/schemas/MenuItem" } }
+        events: { type: array, items: { $ref: "#/components/schemas/PublicEvent" } }
+        order:
+          type: object
+          required: [delivery_min_kop, delivery_radius_km, booking_prepay_kop]
+          properties:
+            delivery_min_kop: { type: integer, format: int64 }
+            delivery_radius_km: { type: integer }
+            booking_prepay_kop: { type: integer, format: int64 }
+
+    OrderCreate:
+      type: object
+      required: [mode, phone, items]
+      properties:
+        mode: { type: string, enum: [pickup, delivery] }
+        phone: { type: string, example: "+7 (900) 000-00-00" }
+        address: { type: string, maxLength: 200, description: "обязателен для доставки" }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items:
+            type: object
+            required: [menu_item_id, qty]
+            properties:
+              menu_item_id: { type: integer, format: int64 }
+              qty: { type: integer, minimum: 1, maximum: 20 }
+    BookingCreate:
+      type: object
+      required: [name, phone, date, time, guests, with_dog]
+      properties:
+        name: { type: string, maxLength: 60 }
+        phone: { type: string }
+        date: { type: string, format: date }
+        time: { type: string, example: "12:00" }
+        guests: { type: integer, minimum: 1, maximum: 10 }
+        with_dog: { type: boolean }
+    SignupCreate:
+      type: object
+      required: [name, via, contact, people, with_dog]
+      properties:
+        name: { type: string, maxLength: 60 }
+        via: { type: string, enum: [phone, tg] }
+        contact: { type: string, maxLength: 40 }
+        people: { type: integer, minimum: 1, maximum: 6 }
+        with_dog: { type: boolean }
+
+    Checkout:
+      type: object
+      required: [id, kind, amount_kop, status]
+      properties:
+        id: { type: integer, format: int64, description: "номер брони / заказа / записи" }
+        kind: { type: string, enum: [booking, order, signup] }
+        amount_kop: { type: integer, format: int64 }
+        status: { type: string, enum: [awaiting_payment, confirmed] }
+        payment_id: { type: string, format: uuid }
+        confirmation_url: { type: string, description: "куда отправить гостя для оплаты" }
+
+    PaymentStatus:
+      type: object
+      required: [id, kind, target_id, amount_kop, description, status]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [booking, order, signup] }
+        target_id: { type: integer, format: int64 }
+        amount_kop: { type: integer, format: int64 }
+        description: { type: string }
+        status: { type: string, enum: [pending, succeeded, canceled, refunded] }
+    PaymentWebhook:
+      type: object
+      required: [event, payment_id, provider_payment_id, amount_kop]
+      properties:
+        event: { type: string, enum: [payment.succeeded, payment.canceled] }
+        payment_id: { type: string, format: uuid }
+        provider_payment_id: { type: string }
+        amount_kop: { type: integer, format: int64 }
+
+    Login:
+      type: object
+      required: [email, password]
+      properties: { email: { type: string }, password: { type: string } }
+    Me:
+      type: object
+      required: [email]
+      properties: { email: { type: string } }
+
+    Booking:
+      type: object
+      required: [id, name, phone, date, time, guests, with_dog, prepay_kop, status, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        phone: { type: string }
+        date: { type: string, format: date }
+        time: { type: string }
+        guests: { type: integer }
+        with_dog: { type: boolean }
+        prepay_kop: { type: integer, format: int64 }
+        status: { type: string, enum: [new, confirmed, cancelled] }
+        created_at: { type: string, format: date-time }
+    Order:
+      type: object
+      required: [id, mode, phone, address, total_kop, status, created_at, items]
+      properties:
+        id: { type: integer, format: int64 }
+        mode: { type: string, enum: [pickup, delivery] }
+        phone: { type: string }
+        address: { type: string }
+        total_kop: { type: integer, format: int64 }
+        status: { type: string, enum: [new, done, cancelled] }
+        created_at: { type: string, format: date-time }
+        items:
+          type: array
+          items:
+            type: object
+            required: [name, price_kop, qty]
+            properties: { name: { type: string }, price_kop: { type: integer, format: int64 }, qty: { type: integer } }
+    Signup:
+      type: object
+      required: [id, name, via, contact, people, with_dog, amount_kop, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        via: { type: string, enum: [phone, tg] }
+        contact: { type: string }
+        people: { type: integer }
+        with_dog: { type: boolean }
+        amount_kop: { type: integer, format: int64 }
+        created_at: { type: string, format: date-time }
+    Notification:
+      type: object
+      required: [id, channel, kind, recipient, title, body, status, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        channel: { $ref: "#/components/schemas/Channel" }
+        kind: { type: string }
+        recipient: { type: string }
+        title: { type: string }
+        body: { type: string }
+        status: { type: string, enum: [sent, failed] }
+        created_at: { type: string, format: date-time }
