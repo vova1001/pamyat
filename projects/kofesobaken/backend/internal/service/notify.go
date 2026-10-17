@@ -59,7 +59,9 @@ func (s *Service) enabled(ctx context.Context, pick func(NotifySettings) bool) b
 	return pick(ns)
 }
 
-func guests(n int) string { return fmt.Sprintf("%d %s", n, Plural(n, "гость", "гостя", "гостей")) }
+func guests(n int) string {
+	return fmt.Sprintf("%d %s", n, Plural(n, "гость", "гостя", "гостей"))
+}
 
 func (s *Service) notifyBooking(ctx context.Context, b store.Booking) {
 	if !s.enabled(ctx, func(n NotifySettings) bool { return n.OnBooking }) {

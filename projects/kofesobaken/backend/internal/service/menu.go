@@ -36,7 +36,9 @@ func (in *MenuInput) check() error {
 	return f.err()
 }
 
-func (s *Service) ListMenu(ctx context.Context) ([]store.MenuItem, error) { return s.q.ListMenuItems(ctx) }
+func (s *Service) ListMenu(ctx context.Context) ([]store.MenuItem, error) {
+	return s.q.ListMenuItems(ctx)
+}
 
 func (s *Service) CreateMenuItem(ctx context.Context, in MenuInput) (store.MenuItem, error) {
 	if err := in.check(); err != nil {

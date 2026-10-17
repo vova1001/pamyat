@@ -97,7 +97,9 @@ func (s *Server) Routes() http.Handler {
 				r.Post("/uploads", s.upload)
 			})
 		})
-		r.NotFound(func(w http.ResponseWriter, _ *http.Request) { writeErr(w, http.StatusNotFound, "not_found", "Не найдено", nil) })
+		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
+			writeErr(w, http.StatusNotFound, "not_found", "Не найдено", nil)
+		})
 	})
 	return r
 }
