@@ -13,3 +13,9 @@
 
 ## 2026-10-17 · Хранилище доступов в лаборатории
 Его нет (service/integrations.md, п. 10), а в тесте 02 нужны ключи API Render/Neon от заказчика. Чем пользоваться в лаборатории до сборки сервиса?
+
+## 2026-10-17 · Тест 02 — нужен публичный репозиторий `PamyatS/kofesobaken` (блокер запуска)
+Заказчик дал «да» на открытый код (кнопка «Deploy to Render»). Создать репозиторий приложение не может
+(403 «Resource not accessible by integration» на POST /orgs/PamyatS/repos). Нужно: создать **публичный** пустой
+`PamyatS/kofesobaken` и дать приложению Claude доступ на запись. В него уйдёт только код
+(frontend, backend, deploy, render.yaml, compose, README) — без брифа, задач, расчётов.
