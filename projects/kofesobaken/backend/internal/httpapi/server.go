@@ -39,8 +39,8 @@ type Options struct {
 func New(svc *service.Service, pay payments.Provider, o Options) *Server {
 	return &Server{
 		svc: svc, pay: pay, uploadDir: o.UploadDir, cookieSecure: o.CookieSecure,
-		formLimit:  NewRateLimiter(10, time.Minute), // 10 оформлений в минуту с одного адреса
-		loginLimit: NewRateLimiter(8, 5*time.Minute),
+		formLimit:  NewRateLimiter(10, time.Minute),   // 10 оформлений в минуту с одного адреса
+		loginLimit: NewRateLimiter(8, 15*time.Minute), // 8 неверных паролей за 15 минут
 	}
 }
 
@@ -66,7 +66,7 @@ func (s *Server) Routes() http.Handler {
 		}
 
 		r.Route("/admin", func(r chi.Router) {
-			r.With(s.loginLimit.Middleware).Post("/login", s.login)
+			r.Post("/login", s.login)
 			r.Post("/logout", s.logout)
 			r.Group(func(r chi.Router) {
 				r.Use(s.requireAdmin)

@@ -45,6 +45,17 @@ func (l *RateLimiter) Allow(key string) bool {
 	return b.n <= l.limit
 }
 
+// Blocked — исчерпан ли лимит (без учёта новой попытки).
+func (l *RateLimiter) Blocked(key string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	b, ok := l.hits[key]
+	return ok && l.now().Sub(b.start) <= l.window && b.n >= l.limit
+}
+
+// Fail засчитывает неудачную попытку (например, неверный пароль).
+func (l *RateLimiter) Fail(key string) { l.Allow(key) }
+
 func (l *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !l.Allow(r.RemoteAddr) {

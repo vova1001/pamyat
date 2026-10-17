@@ -1,6 +1,7 @@
 # Сборка API. REGISTRY — откуда брать базовые образы (по умолчанию зеркало Docker Hub).
 ARG REGISTRY=mirror.gcr.io/library
 FROM ${REGISTRY}/golang:1.24-alpine AS build
+ENV CGO_ENABLED=0
 WORKDIR /src
 # Необязательные доп. сертификаты (корпоративный прокси): положите *.crt в backend/certs/.
 COPY certs/ /tmp/certs/

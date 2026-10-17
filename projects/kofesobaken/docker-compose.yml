@@ -65,6 +65,37 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ---- только для make test: тесты бэка на настоящей PostgreSQL в памяти ----
+  db-test:
+    profiles: [test]
+    image: ${REGISTRY:-mirror.gcr.io/library}/postgres:16-alpine
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+    tmpfs: /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  backend-test:
+    profiles: [test]
+    build:
+      context: ./backend
+      target: build
+      args: *registry
+    environment:
+      TEST_DATABASE_URL: postgres://test:test@db-test:5432/test?sslmode=disable
+    command: >
+      sh -c "go vet ./... &&
+             go test -p 1 -coverpkg=./internal/service,./internal/store,./internal/httpapi,./internal/payments -coverprofile=/tmp/c.out ./... &&
+             go tool cover -func=/tmp/c.out | tail -1"
+    depends_on:
+      db-test:
+        condition: service_healthy
+
 volumes:
   pgdata:
   uploads:

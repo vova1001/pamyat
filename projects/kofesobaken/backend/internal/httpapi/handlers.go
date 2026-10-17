@@ -158,12 +158,19 @@ type loginIn struct {
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
+	if s.loginLimit.Blocked(r.RemoteAddr) {
+		writeErr(w, http.StatusTooManyRequests, "rate_limited", "Слишком много попыток — подождите 15 минут", nil)
+		return
+	}
 	var in loginIn
 	if !decode(w, r, &in) {
 		return
 	}
 	token, email, err := s.svc.Login(r.Context(), in.Email, in.Password)
 	if err != nil {
+		if errors.Is(err, service.ErrBadLogin) {
+			s.loginLimit.Fail(r.RemoteAddr)
+		}
 		fail(w, r, err)
 		return
 	}
