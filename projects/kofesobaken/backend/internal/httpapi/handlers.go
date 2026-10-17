@@ -1,0 +1,422 @@
+package httpapi
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"io"
+	"log/slog"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"kofesobaken/backend/internal/payments"
+	"kofesobaken/backend/internal/service"
+)
+
+func (s *Server) health(w http.ResponseWriter, r *http.Request) {
+	if err := s.svc.Ping(r.Context()); err != nil {
+		writeErr(w, http.StatusServiceUnavailable, "unavailable", "База данных недоступна", nil)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) site(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.Site(r.Context())
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusOK, v)
+}
+
+// ---------- оформление ----------
+
+func (s *Server) createOrder(w http.ResponseWriter, r *http.Request) {
+	var in service.OrderInput
+	if !decode(w, r, &in) {
+		return
+	}
+	c, err := s.svc.CreateOrder(r.Context(), in)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, c)
+}
+
+func (s *Server) createBooking(w http.ResponseWriter, r *http.Request) {
+	var in service.BookingInput
+	if !decode(w, r, &in) {
+		return
+	}
+	c, err := s.svc.CreateBooking(r.Context(), in)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, c)
+}
+
+func (s *Server) createSignup(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	var in service.SignupInput
+	if !decode(w, r, &in) {
+		return
+	}
+	c, err := s.svc.CreateSignup(r.Context(), id, in)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, c)
+}
+
+// ---------- оплата ----------
+
+func (s *Server) paymentStatus(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathPID(w, r)
+	if !ok {
+		return
+	}
+	p, err := s.svc.Payment(r.Context(), id)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, p)
+}
+
+func (s *Server) paymentWebhook(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(io.LimitReader(r.Body, 64<<10))
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "bad_request", "Не удалось прочитать уведомление", nil)
+		return
+	}
+	ev, err := s.pay.ParseWebhook(r.Header, body)
+	if errors.Is(err, payments.ErrBadSignature) {
+		slog.Warn("уведомление об оплате с неверной подписью", "ip", r.RemoteAddr)
+		writeErr(w, http.StatusUnauthorized, "bad_signature", "Неверная подпись", nil)
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "bad_request", "Неверное уведомление", nil)
+		return
+	}
+	if err := s.svc.HandlePaymentEvent(r.Context(), ev); err != nil {
+		var ce *service.ConflictError
+		if errors.As(err, &ce) {
+			slog.Warn("уведомление об оплате отклонено", "reason", ce.Msg, "payment_id", ev.PaymentID)
+			writeErr(w, http.StatusBadRequest, "rejected", ce.Msg, nil)
+			return
+		}
+		fail(w, r, err)
+		return
+	}
+	slog.Info("уведомление об оплате принято", "payment_id", ev.PaymentID, "event", ev.Type)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) testPay(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathPID(w, r)
+	if !ok {
+		return
+	}
+	p, err := s.svc.TestPay(r.Context(), id)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, p)
+}
+
+func (s *Server) testCancel(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathPID(w, r)
+	if !ok {
+		return
+	}
+	p, err := s.svc.TestCancel(r.Context(), id)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, p)
+}
+
+// ---------- вход ----------
+
+type loginIn struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (s *Server) login(w http.ResponseWriter, r *http.Request) {
+	var in loginIn
+	if !decode(w, r, &in) {
+		return
+	}
+	token, email, err := s.svc.Login(r.Context(), in.Email, in.Password)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", HttpOnly: true, Secure: s.cookieSecure, SameSite: http.SameSiteLaxMode, MaxAge: int(service.SessionTTL.Seconds())})
+	writeJSON(w, http.StatusOK, map[string]string{"email": email})
+}
+
+func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
+	if c, err := r.Cookie(cookieName); err == nil {
+		_ = s.svc.Logout(r.Context(), c.Value)
+	}
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "", Path: "/", HttpOnly: true, Secure: s.cookieSecure, SameSite: http.SameSiteLaxMode, MaxAge: -1})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) me(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"email": r.Context().Value(ctxKey{}).(string)})
+}
+
+// ---------- кабинет ----------
+
+// respond — общий вид простых обработчиков кабинета.
+func respond[T any](w http.ResponseWriter, r *http.Request, status int, v T, err error) {
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	writeJSON(w, status, v)
+}
+
+func (s *Server) listBookings(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.ListBookings(r.Context())
+	respond(w, r, http.StatusOK, v, err)
+}
+
+func (s *Server) confirmBooking(w http.ResponseWriter, r *http.Request) {
+	if id, ok := pathID(w, r); ok {
+		v, err := s.svc.ConfirmBooking(r.Context(), id)
+		respond(w, r, http.StatusOK, v, err)
+	}
+}
+
+func (s *Server) cancelBooking(w http.ResponseWriter, r *http.Request) {
+	if id, ok := pathID(w, r); ok {
+		v, err := s.svc.CancelBooking(r.Context(), id)
+		respond(w, r, http.StatusOK, v, err)
+	}
+}
+
+func (s *Server) listOrders(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.ListOrders(r.Context())
+	respond(w, r, http.StatusOK, v, err)
+}
+
+func (s *Server) orderDone(w http.ResponseWriter, r *http.Request) {
+	if id, ok := pathID(w, r); ok {
+		v, err := s.svc.OrderDone(r.Context(), id)
+		respond(w, r, http.StatusOK, v, err)
+	}
+}
+
+func (s *Server) cancelOrder(w http.ResponseWriter, r *http.Request) {
+	if id, ok := pathID(w, r); ok {
+		v, err := s.svc.CancelOrder(r.Context(), id)
+		respond(w, r, http.StatusOK, v, err)
+	}
+}
+
+func (s *Server) listMenu(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.ListMenu(r.Context())
+	respond(w, r, http.StatusOK, v, err)
+}
+
+func (s *Server) createMenu(w http.ResponseWriter, r *http.Request) {
+	var in service.MenuInput
+	if decode(w, r, &in) {
+		v, err := s.svc.CreateMenuItem(r.Context(), in)
+		respond(w, r, http.StatusCreated, v, err)
+	}
+}
+
+func (s *Server) updateMenu(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	var in service.MenuInput
+	if ok && decode(w, r, &in) {
+		v, err := s.svc.UpdateMenuItem(r.Context(), id, in)
+		respond(w, r, http.StatusOK, v, err)
+	}
+}
+
+func (s *Server) deleteMenu(w http.ResponseWriter, r *http.Request) {
+	if id, ok := pathID(w, r); ok {
+		if err := s.svc.DeleteMenuItem(r.Context(), id); err != nil {
+			fail(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func (s *Server) listEvents(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.ListEvents(r.Context())
+	respond(w, r, http.StatusOK, v, err)
+}
+
+func (s *Server) createEvent(w http.ResponseWriter, r *http.Request) {
+	var in service.EventInput
+	if decode(w, r, &in) {
+		v, err := s.svc.CreateEvent(r.Context(), in)
+		respond(w, r, http.StatusCreated, v, err)
+	}
+}
+
+func (s *Server) updateEvent(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	var in service.EventInput
+	if ok && decode(w, r, &in) {
+		v, err := s.svc.UpdateEvent(r.Context(), id, in)
+		respond(w, r, http.StatusOK, v, err)
+	}
+}
+
+func (s *Server) deleteEvent(w http.ResponseWriter, r *http.Request) {
+	if id, ok := pathID(w, r); ok {
+		if err := s.svc.DeleteEvent(r.Context(), id); err != nil {
+			fail(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func (s *Server) listSignups(w http.ResponseWriter, r *http.Request) {
+	if id, ok := pathID(w, r); ok {
+		v, err := s.svc.ListSignups(r.Context(), id)
+		respond(w, r, http.StatusOK, v, err)
+	}
+}
+
+func (s *Server) getContent(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.Content(r.Context())
+	respond(w, r, http.StatusOK, v, err)
+}
+
+func (s *Server) putContent(w http.ResponseWriter, r *http.Request) {
+	var in service.Content
+	if decode(w, r, &in) {
+		v, err := s.svc.PutContent(r.Context(), in)
+		respond(w, r, http.StatusOK, v, err)
+	}
+}
+
+func (s *Server) getSettings(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.Settings(r.Context())
+	respond(w, r, http.StatusOK, v, err)
+}
+
+func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
+	var in service.Settings
+	if decode(w, r, &in) {
+		v, err := s.svc.PutSettings(r.Context(), in)
+		respond(w, r, http.StatusOK, v, err)
+	}
+}
+
+func (s *Server) testNotify(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Channel string `json:"channel"`
+	}
+	if decode(w, r, &in) {
+		v, err := s.svc.TestNotify(r.Context(), in.Channel)
+		respond(w, r, http.StatusOK, v, err)
+	}
+}
+
+func (s *Server) tgConnect(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.TelegramConnect(r.Context())
+	respond(w, r, http.StatusOK, v, err)
+}
+
+func (s *Server) tgDisconnect(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.TelegramDisconnect(r.Context())
+	respond(w, r, http.StatusOK, v, err)
+}
+
+func (s *Server) listNotifications(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.ListNotifications(r.Context())
+	respond(w, r, http.StatusOK, v, err)
+}
+
+// ---------- фото ----------
+
+const maxUpload = 8 << 20
+
+var imageExt = map[string]string{"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+
+func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxUpload+1<<20)
+	if err := r.ParseMultipartForm(maxUpload); err != nil {
+		writeErr(w, http.StatusRequestEntityTooLarge, "too_large", "Фото больше 8 МБ — уменьшите и попробуйте снова", nil)
+		return
+	}
+	f, hdr, err := r.FormFile("file")
+	if err != nil {
+		writeErr(w, http.StatusUnprocessableEntity, "validation", "Выберите фото", nil)
+		return
+	}
+	defer f.Close()
+	if hdr.Size > maxUpload {
+		writeErr(w, http.StatusRequestEntityTooLarge, "too_large", "Фото больше 8 МБ — уменьшите и попробуйте снова", nil)
+		return
+	}
+	head := make([]byte, 512)
+	n, _ := io.ReadFull(f, head)
+	ext, ok := imageExt[http.DetectContentType(head[:n])]
+	if !ok {
+		writeErr(w, http.StatusUnprocessableEntity, "validation", "Нужно фото в формате JPG, PNG или WebP", nil)
+		return
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		fail(w, r, err)
+		return
+	}
+	rnd := make([]byte, 12)
+	_, _ = rand.Read(rnd)
+	name := time.Now().UTC().Format("20060102") + "-" + hex.EncodeToString(rnd) + ext
+	if err := os.MkdirAll(s.uploadDir, 0o755); err != nil {
+		fail(w, r, err)
+		return
+	}
+	dst, err := os.Create(filepath.Join(s.uploadDir, name))
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	defer dst.Close()
+	if _, err := io.Copy(dst, f); err != nil {
+		fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]string{"url": "/uploads/" + name})
+}
+
+// uploadsHandler отдаёт загруженные фото; без списка файлов.
+func uploadsHandler(dir string) http.Handler {
+	fs := http.FileServer(http.Dir(dir))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "" || strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		fs.ServeHTTP(w, r)
+	})
+}
