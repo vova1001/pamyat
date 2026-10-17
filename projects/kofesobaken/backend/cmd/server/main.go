@@ -1,4 +1,7 @@
 // Сервер API КофеСобакен: настройки из окружения, миграции, подготовка БД, HTTP.
+//
+//	server             — запуск
+//	server admin-link  — новая одноразовая ссылка входа администратора (забыл пароль): пароль задаётся заново
 package main
 
 import (
@@ -53,6 +56,20 @@ func run() error {
 	if err := svc.Bootstrap(ctx, cfg.AdminEmail, cfg.AdminPassword, cfg.SeedDemo); err != nil {
 		return err
 	}
+	if len(os.Args) > 1 && os.Args[1] == "admin-link" {
+		code, err := svc.IssueSetupLink(ctx, cfg.AdminEmail)
+		if err != nil {
+			return err
+		}
+		logSetupLink(cfg, code)
+		return nil
+	}
+	// Пароль администратора ещё не задан — одноразовая ссылка в лог (действует 72 часа, при перезапуске — новая).
+	if code, err := svc.PendingSetup(ctx, cfg.AdminEmail); err != nil {
+		return err
+	} else if code != "" {
+		logSetupLink(cfg, code)
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
@@ -72,6 +89,12 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+// logSetupLink — ссылка первого входа: по ней администратор сам задаёт пароль. В базе — только хэш кода.
+func logSetupLink(cfg config.Config, code string) {
+	slog.Warn("ссылка входа администратора: откройте её и придумайте пароль (одноразовая, 72 часа)",
+		"email", cfg.AdminEmail, "link", cfg.PublicURL+"/admin#setup/"+code)
 }
 
 // connect ждёт базу до 60 секунд — при первом запуске Postgres поднимается дольше сервера.

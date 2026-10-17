@@ -11,7 +11,7 @@ import (
 
 const createStaff = `-- name: CreateStaff :one
 INSERT INTO admins (email, password_hash, name, role, must_change_password)
-VALUES ($1, $2, $3, 'staff', TRUE)
+VALUES ($1, $2, $3, $4, TRUE)
 RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at
 `
 
@@ -19,10 +19,16 @@ type CreateStaffParams struct {
 	Email        string `json:"email"`
 	PasswordHash string `json:"password_hash"`
 	Name         string `json:"name"`
+	Role         string `json:"role"`
 }
 
 func (q *Queries) CreateStaff(ctx context.Context, arg CreateStaffParams) (Admin, error) {
-	row := q.db.QueryRow(ctx, createStaff, arg.Email, arg.PasswordHash, arg.Name)
+	row := q.db.QueryRow(ctx, createStaff,
+		arg.Email,
+		arg.PasswordHash,
+		arg.Name,
+		arg.Role,
+	)
 	var i Admin
 	err := row.Scan(
 		&i.ID,
@@ -78,7 +84,7 @@ func (q *Queries) ListStaff(ctx context.Context) ([]Admin, error) {
 
 const resetStaffPassword = `-- name: ResetStaffPassword :one
 UPDATE admins SET password_hash = $2, must_change_password = TRUE
-WHERE id = $1 AND role = 'staff'
+WHERE id = $1
 RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at
 `
 
@@ -87,7 +93,7 @@ type ResetStaffPasswordParams struct {
 	PasswordHash string `json:"password_hash"`
 }
 
-// Новый временный пароль от администратора: при входе сотрудник обязан сменить его.
+// Новый временный пароль от администратора: при входе человек обязан сменить его.
 func (q *Queries) ResetStaffPassword(ctx context.Context, arg ResetStaffPasswordParams) (Admin, error) {
 	row := q.db.QueryRow(ctx, resetStaffPassword, arg.ID, arg.PasswordHash)
 	var i Admin
@@ -109,7 +115,7 @@ func (q *Queries) ResetStaffPassword(ctx context.Context, arg ResetStaffPassword
 
 const updateStaff = `-- name: UpdateStaff :one
 UPDATE admins SET name = $2, email = $3, active = $4
-WHERE id = $1 AND role = 'staff'
+WHERE id = $1
 RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at
 `
 

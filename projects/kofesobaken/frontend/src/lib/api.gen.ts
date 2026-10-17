@@ -448,6 +448,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Кто вошёл (доступно и с временным паролем) */
         get: {
             parameters: {
                 query?: never;
@@ -471,6 +472,249 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Сменить свой пароль (временный — обязательно при первом входе). Другие сессии закрываются */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PasswordChange"];
+                };
+            };
+            responses: {
+                /** @description Сменён */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Me"];
+                    };
+                };
+                401: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Первый вход администратора по одноразовой ссылке (/admin#setup/<token>) — свой пароль и сразу вход */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["Setup"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Me"];
+                    };
+                };
+                410: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Администратор и сотрудники (только администратор) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Staff"][];
+                    };
+                };
+                403: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        /** Новый сотрудник с временным паролем — при первом входе сменит его */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StaffCreate"];
+                };
+            };
+            responses: {
+                /** @description Создан */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Staff"];
+                    };
+                };
+                403: components["responses"]["Error"];
+                409: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/staff/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Имя, почта, доступ. active=false — сотрудник выходит из всех сессий. Администратора не меняет (404) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StaffUpdate"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Staff"];
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                409: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/staff/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Сбросить пароль сотрудника — новый временный; все его сессии закрываются */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        password: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Staff"];
+                    };
+                };
+                403: components["responses"]["Error"];
+                404: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1009,6 +1253,7 @@ export interface paths {
                         "application/json": components["schemas"]["Content"];
                     };
                 };
+                403: components["responses"]["Error"];
             };
         };
         put: {
@@ -1033,6 +1278,7 @@ export interface paths {
                         "application/json": components["schemas"]["Content"];
                     };
                 };
+                403: components["responses"]["Error"];
                 422: components["responses"]["Error"];
             };
         };
@@ -1068,6 +1314,7 @@ export interface paths {
                         "application/json": components["schemas"]["Settings"];
                     };
                 };
+                403: components["responses"]["Error"];
             };
         };
         put: {
@@ -1092,6 +1339,7 @@ export interface paths {
                         "application/json": components["schemas"]["Settings"];
                     };
                 };
+                403: components["responses"]["Error"];
                 422: components["responses"]["Error"];
             };
         };
@@ -1136,6 +1384,7 @@ export interface paths {
                         "application/json": components["schemas"]["Notification"];
                     };
                 };
+                403: components["responses"]["Error"];
                 422: components["responses"]["Error"];
             };
         };
@@ -1173,6 +1422,7 @@ export interface paths {
                         "application/json": components["schemas"]["Settings"];
                     };
                 };
+                403: components["responses"]["Error"];
             };
         };
         delete?: never;
@@ -1208,6 +1458,7 @@ export interface paths {
                         "application/json": components["schemas"]["Settings"];
                     };
                 };
+                403: components["responses"]["Error"];
             };
         };
         delete?: never;
@@ -1242,6 +1493,7 @@ export interface paths {
                         "application/json": components["schemas"]["Notification"][];
                     };
                 };
+                403: components["responses"]["Error"];
             };
         };
         put?: never;
@@ -1526,8 +1778,48 @@ export interface components {
             email: string;
             password: string;
         };
+        /** @enum {string} */
+        Role: "admin" | "staff";
         Me: {
+            /** Format: int64 */
+            id: number;
             email: string;
+            name: string;
+            role: components["schemas"]["Role"];
+            /** @description вошёл с временным паролем — сначала смена */
+            must_change_password: boolean;
+        };
+        PasswordChange: {
+            current_password: string;
+            new_password: string;
+        };
+        Setup: {
+            token: string;
+            password: string;
+        };
+        Staff: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            email: string;
+            role: components["schemas"]["Role"];
+            active: boolean;
+            must_change_password: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            last_login_at: string | null;
+        };
+        StaffCreate: {
+            name: string;
+            email: string;
+            /** @description временный пароль — администратор передаёт сотруднику сам */
+            password: string;
+        };
+        StaffUpdate: {
+            name: string;
+            email: string;
+            active: boolean;
         };
         Booking: {
             /** Format: int64 */

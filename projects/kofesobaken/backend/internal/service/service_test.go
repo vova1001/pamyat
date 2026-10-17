@@ -146,12 +146,26 @@ func TestBootstrapIdempotent(t *testing.T) {
 	if len(menu) != 9 || len(evs) != 3 {
 		t.Fatal("повторный запуск не должен ничего добавлять")
 	}
-	// Временный пароль для нового владельца без пароля.
+	// Администратор без пароля: входа по паролю нет, только одноразовая ссылка.
 	if err := e.svc.Bootstrap(ctx, "second@example.com", "", false); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := e.svc.Login(ctx, "second@example.com", "что-угодно"); !errors.Is(err, service.ErrBadLogin) {
-		t.Fatal("случайный пароль не должен подходить к произвольному")
+	if _, _, err := e.svc.Login(ctx, "second@example.com", ""); !errors.Is(err, service.ErrBadLogin) {
+		t.Fatal("пустой пароль не должен подходить")
+	}
+	code, err := e.svc.PendingSetup(ctx, "second@example.com")
+	if err != nil || code == "" {
+		t.Fatalf("ссылка первого входа: %q %v", code, err)
+	}
+	// Пароль из окружения не перезаписывает уже заданный.
+	if err := e.svc.Bootstrap(ctx, "owner@example.com", "other-pass-1", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := e.svc.Login(ctx, "owner@example.com", "secret-pass"); err != nil {
+		t.Fatalf("прежний пароль должен остаться: %v", err)
+	}
+	if code, _ := e.svc.PendingSetup(ctx, "owner@example.com"); code != "" {
+		t.Fatal("пароль задан — ссылка не нужна")
 	}
 }
 
@@ -164,17 +178,17 @@ func TestLoginSession(t *testing.T) {
 	if _, _, err := e.svc.Login(ctx, "nobody@example.com", "secret-pass"); !errors.Is(err, service.ErrBadLogin) {
 		t.Fatalf("нет такой почты: %v", err)
 	}
-	tok, email, err := e.svc.Login(ctx, " OWNER@example.com ", "secret-pass")
-	if err != nil || email != "owner@example.com" {
-		t.Fatalf("вход: %v %q", err, email)
+	tok, acc, err := e.svc.Login(ctx, " OWNER@example.com ", "secret-pass")
+	if err != nil || acc.Email != "owner@example.com" || acc.Role != service.RoleAdmin {
+		t.Fatalf("вход: %v %+v", err, acc)
 	}
-	if got, err := e.svc.SessionEmail(ctx, tok); err != nil || got != "owner@example.com" {
-		t.Fatalf("сессия: %v %q", err, got)
+	if got, err := e.svc.Session(ctx, tok); err != nil || got.Email != "owner@example.com" || !got.IsAdmin() {
+		t.Fatalf("сессия: %v %+v", err, got)
 	}
-	if _, err := e.svc.SessionEmail(ctx, "bad"); !errors.Is(err, service.ErrUnauthorized) {
+	if _, err := e.svc.Session(ctx, "bad"); !errors.Is(err, service.ErrUnauthorized) {
 		t.Fatal("чужой токен должен давать ErrUnauthorized")
 	}
-	if _, err := e.svc.SessionEmail(ctx, ""); !errors.Is(err, service.ErrUnauthorized) {
+	if _, err := e.svc.Session(ctx, ""); !errors.Is(err, service.ErrUnauthorized) {
 		t.Fatal("пустой токен должен давать ErrUnauthorized")
 	}
 	if err := e.svc.Logout(ctx, tok); err != nil {
@@ -183,9 +197,167 @@ func TestLoginSession(t *testing.T) {
 	if err := e.svc.Logout(ctx, ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.svc.SessionEmail(ctx, tok); !errors.Is(err, service.ErrUnauthorized) {
+	if _, err := e.svc.Session(ctx, tok); !errors.Is(err, service.ErrUnauthorized) {
 		t.Fatal("после выхода сессия не действует")
 	}
+}
+
+func TestSetupLink(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	if err := e.svc.Bootstrap(ctx, "boss@example.com", "", false); err != nil {
+		t.Fatal(err)
+	}
+	old, _ := e.svc.PendingSetup(ctx, "boss@example.com")
+	code, _ := e.svc.PendingSetup(ctx, "boss@example.com") // перезапуск — новая ссылка, старая не действует
+	if _, _, err := e.svc.SetupPassword(ctx, old, "boss-pass-1"); !errors.Is(err, service.ErrSetupExpired) {
+		t.Fatalf("старая ссылка: %v", err)
+	}
+	if em, err := e.svc.SetupEmail(ctx, code); err != nil || em != "boss@example.com" {
+		t.Fatalf("чья ссылка: %q %v", em, err)
+	}
+	if _, err := e.svc.SetupEmail(ctx, old); !errors.Is(err, service.ErrSetupExpired) {
+		t.Fatal("старая ссылка не действует")
+	}
+	if _, _, err := e.svc.SetupPassword(ctx, code, "short"); err == nil {
+		t.Fatal("короткий пароль")
+	} else {
+		fieldErr(t, err, "password")
+	}
+	tok, acc, err := e.svc.SetupPassword(ctx, code, "boss-pass-1")
+	if err != nil || acc.Role != service.RoleAdmin || acc.MustChangePassword {
+		t.Fatalf("первый вход: %v %+v", err, acc)
+	}
+	if _, err := e.svc.Session(ctx, tok); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := e.svc.SetupPassword(ctx, code, "boss-pass-2"); !errors.Is(err, service.ErrSetupExpired) {
+		t.Fatal("ссылка одноразовая")
+	}
+	if _, _, err := e.svc.Login(ctx, "boss@example.com", "boss-pass-1"); err != nil {
+		t.Fatalf("вход своим паролем: %v", err)
+	}
+	if _, _, err := e.svc.SetupPassword(ctx, "", "boss-pass-2"); !errors.Is(err, service.ErrSetupExpired) {
+		t.Fatal("пустой код")
+	}
+	// Забыл пароль: новая ссылка от студии (server admin-link) задаёт пароль заново и закрывает старые сессии.
+	code, err = e.svc.IssueSetupLink(ctx, "boss@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := e.svc.SetupPassword(ctx, code, "boss-pass-3"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.Session(ctx, tok); !errors.Is(err, service.ErrUnauthorized) {
+		t.Fatal("старые сессии закрыты")
+	}
+	if _, err := e.svc.IssueSetupLink(ctx, "nobody@example.com"); !errors.Is(err, service.ErrNotFound) {
+		t.Fatal("нет такого администратора")
+	}
+}
+
+func TestStaff(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	_, err := e.svc.CreateStaff(ctx, service.StaffCreate{Name: " ", Email: "bad", Password: "123"})
+	fieldErr(t, err, "name")
+	fieldErr(t, err, "email")
+	fieldErr(t, err, "password")
+	_, owner, _ := e.svc.Login(ctx, "owner@example.com", "secret-pass")
+	_, err = e.svc.CreateStaff(ctx, service.StaffCreate{Name: "Икс", Email: "x@example.com", Password: "temp-pass-1", Role: "root"})
+	fieldErr(t, err, "role")
+	st, err := e.svc.CreateStaff(ctx, service.StaffCreate{Name: " Анна ", Email: "Anna@Example.com", Password: "temp-pass-1"})
+	if err != nil || st.Name != "Анна" || st.Email != "anna@example.com" || st.Role != service.RoleStaff || !st.Active || !st.MustChangePassword {
+		t.Fatalf("создать: %v %+v", err, st)
+	}
+	_, err = e.svc.CreateStaff(ctx, service.StaffCreate{Name: "Анна 2", Email: "anna@example.com", Password: "temp-pass-1"})
+	conflict(t, err)
+	_, err = e.svc.CreateStaff(ctx, service.StaffCreate{Name: "Владелец", Email: "owner@example.com", Password: "temp-pass-1"})
+	conflict(t, err)
+
+	// вход с временным паролем → смена пароля обязательна
+	tok, acc, err := e.svc.Login(ctx, "anna@example.com", "temp-pass-1")
+	if err != nil || !acc.MustChangePassword || acc.IsAdmin() {
+		t.Fatalf("вход сотрудника: %v %+v", err, acc)
+	}
+	fieldErr(t, e.svc.ChangePassword(ctx, acc, tok, "temp-pass-1", "temp-pass-1"), "new_password")
+	fieldErr(t, e.svc.ChangePassword(ctx, acc, tok, "temp-pass-1", "1234567"), "new_password")
+	tok2, _, _ := e.svc.Login(ctx, "anna@example.com", "temp-pass-1") // второе устройство
+	// сразу после входа с временным паролем текущий не спрашиваем
+	if err := e.svc.ChangePassword(ctx, acc, tok, "", "anna-own-1"); err != nil {
+		t.Fatal(err)
+	}
+	// дальше — только с верным текущим
+	if err := e.svc.ChangePassword(ctx, acc, tok, "wrong-pass", "anna-own-2"); !errors.Is(err, service.ErrWrongPassword) {
+		t.Fatalf("неверный текущий: %v", err)
+	}
+	if err := e.svc.ChangePassword(ctx, acc, tok, "anna-own-1", "anna-own-2"); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := e.svc.Session(ctx, tok); err != nil || got.MustChangePassword {
+		t.Fatalf("после смены: %v %+v", err, got)
+	}
+	if _, err := e.svc.Session(ctx, tok2); !errors.Is(err, service.ErrUnauthorized) {
+		t.Fatal("другие сессии закрываются при смене пароля")
+	}
+	if _, _, err := e.svc.Login(ctx, "anna@example.com", "temp-pass-1"); !errors.Is(err, service.ErrBadLogin) {
+		t.Fatal("временный пароль больше не подходит")
+	}
+
+	// отключить: выходит из всех сессий, войти нельзя
+	off, err := e.svc.UpdateStaff(ctx, owner, st.ID, service.StaffUpdate{Name: "Анна П.", Email: "anna@example.com", Active: false})
+	if err != nil || off.Active || off.Name != "Анна П." {
+		t.Fatalf("отключить: %v %+v", err, off)
+	}
+	if _, err := e.svc.Session(ctx, tok); !errors.Is(err, service.ErrUnauthorized) {
+		t.Fatal("отключённый выходит из сессий")
+	}
+	if _, _, err := e.svc.Login(ctx, "anna@example.com", "anna-own-2"); !errors.Is(err, service.ErrBadLogin) {
+		t.Fatal("отключённый не входит")
+	}
+	// включить и сбросить пароль
+	if _, err := e.svc.UpdateStaff(ctx, owner, st.ID, service.StaffUpdate{Name: "Анна П.", Email: "anna@example.com", Active: true}); err != nil {
+		t.Fatal(err)
+	}
+	tok, _, _ = e.svc.Login(ctx, "anna@example.com", "anna-own-2")
+	rs, err := e.svc.ResetStaffPassword(ctx, owner, st.ID, "temp-pass-2")
+	if err != nil || !rs.MustChangePassword {
+		t.Fatalf("сброс: %v %+v", err, rs)
+	}
+	if _, err := e.svc.Session(ctx, tok); !errors.Is(err, service.ErrUnauthorized) {
+		t.Fatal("после сброса старые сессии закрыты")
+	}
+	if _, acc, err := e.svc.Login(ctx, "anna@example.com", "temp-pass-2"); err != nil || !acc.MustChangePassword {
+		t.Fatalf("вход с новым временным: %v", err)
+	}
+	fieldErr(t, func() error { _, err := e.svc.ResetStaffPassword(ctx, owner, st.ID, "x"); return err }(), "password")
+
+	// себя не изменить и не отключить; второго администратора — можно
+	list, _ := e.svc.ListStaff(ctx)
+	if len(list) != 2 || list[0].Role != service.RoleAdmin {
+		t.Fatalf("список: %+v", list)
+	}
+	_, err = e.svc.UpdateStaff(ctx, owner, owner.ID, service.StaffUpdate{Name: "x", Email: "owner@example.com", Active: false})
+	conflict(t, err)
+	_, err = e.svc.ResetStaffPassword(ctx, owner, owner.ID, "temp-pass-9")
+	conflict(t, err)
+	adm2, err := e.svc.CreateStaff(ctx, service.StaffCreate{Name: "Совладелец", Email: "co@example.com", Password: "temp-pass-1", Role: service.RoleAdmin})
+	if err != nil || adm2.Role != service.RoleAdmin || !adm2.MustChangePassword {
+		t.Fatalf("второй администратор: %v %+v", err, adm2)
+	}
+	if v, err := e.svc.UpdateStaff(ctx, owner, adm2.ID, service.StaffUpdate{Name: "Совладелец", Email: "co@example.com", Active: false}); err != nil || v.Active {
+		t.Fatalf("отключить второго администратора: %v", err)
+	}
+	if _, err := e.svc.UpdateStaff(ctx, owner, 99999, service.StaffUpdate{Name: "x", Email: "n@example.com"}); !errors.Is(err, service.ErrNotFound) {
+		t.Fatalf("нет такого: %v", err)
+	}
+	b, _ := e.svc.CreateStaff(ctx, service.StaffCreate{Name: "Борис", Email: "boris@example.com", Password: "temp-pass-1"})
+	_, err = e.svc.UpdateStaff(ctx, owner, b.ID, service.StaffUpdate{Name: "Борис", Email: "anna@example.com", Active: true})
+	conflict(t, err)
+	fieldErr(t, func() error {
+		_, err := e.svc.UpdateStaff(ctx, owner, b.ID, service.StaffUpdate{Name: "", Email: "x"})
+		return err
+	}(), "email")
 }
 
 func TestMenuCRUD(t *testing.T) {

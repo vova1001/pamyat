@@ -362,3 +362,173 @@ func TestRateLimiter(t *testing.T) {
 		t.Fatalf("ждали 429, получили %d", rr.Code)
 	}
 }
+
+// newClient — второй человек со своей cookie (сотрудник), тот же сервер.
+func (c *client) newClient() *client {
+	jar, _ := cookiejar.New(nil)
+	return &client{t: c.t, base: c.base, http: &http.Client{Jar: jar}}
+}
+
+func errCode(m map[string]any) any {
+	if e, ok := m["error"].(map[string]any); ok {
+		return e["code"]
+	}
+	return nil
+}
+
+func TestClosedWithoutLogin(t *testing.T) {
+	c, _ := setup(t)
+	for _, p := range [][2]string{
+		{"GET", "/api/admin/me"}, {"GET", "/api/admin/bookings"}, {"POST", "/api/admin/bookings/1/confirm"},
+		{"GET", "/api/admin/orders"}, {"GET", "/api/admin/menu"}, {"POST", "/api/admin/menu"}, {"DELETE", "/api/admin/menu/1"},
+		{"GET", "/api/admin/events"}, {"GET", "/api/admin/events/1/signups"}, {"GET", "/api/admin/content"}, {"PUT", "/api/admin/content"},
+		{"GET", "/api/admin/settings"}, {"GET", "/api/admin/notifications"}, {"POST", "/api/admin/uploads"},
+		{"GET", "/api/admin/staff"}, {"POST", "/api/admin/staff"}, {"PUT", "/api/admin/staff/1"}, {"POST", "/api/admin/staff/1/password"},
+		{"POST", "/api/admin/password"},
+	} {
+		st, m, _ := c.do(p[0], p[1], map[string]any{})
+		if st != 401 || errCode(m) != "unauthorized" {
+			t.Errorf("%s %s без входа: %d %v", p[0], p[1], st, m)
+		}
+	}
+	// поддельная cookie
+	req, _ := http.NewRequest("GET", c.base+"/api/admin/bookings", nil)
+	req.AddCookie(&http.Cookie{Name: "ks_session", Value: "подделка"})
+	if res, _ := http.DefaultClient.Do(req); res.StatusCode != 401 {
+		t.Fatalf("поддельная cookie: %d", res.StatusCode)
+	}
+}
+
+func TestStaffRoles(t *testing.T) {
+	admin, _ := setup(t)
+	if st, m, _ := admin.do("POST", "/api/admin/login", map[string]string{"email": "owner@example.com", "password": "pass-123"}); st != 200 || m["role"] != "admin" {
+		t.Fatalf("вход администратора: %d %v", st, m)
+	}
+	// создать сотрудника
+	if st, m, _ := admin.do("POST", "/api/admin/staff", map[string]string{"name": "", "email": "x", "password": "1"}); st != 422 || len(m["error"].(map[string]any)["fields"].(map[string]any)) != 3 {
+		t.Fatalf("ошибки полей: %d %v", st, m)
+	}
+	st, m, _ := admin.do("POST", "/api/admin/staff", map[string]string{"name": "Анна", "email": "anna@example.com", "password": "temp-pass-1"})
+	if st != 201 || m["role"] != "staff" || m["must_change_password"] != true || m["password_hash"] != nil {
+		t.Fatalf("создать: %d %v", st, m)
+	}
+	id := fmt.Sprint(m["id"])
+	if st, _, _ := admin.do("POST", "/api/admin/staff", map[string]string{"name": "Анна", "email": "anna@example.com", "password": "temp-pass-1"}); st != 409 {
+		t.Fatalf("та же почта: %d", st)
+	}
+
+	// сотрудник входит с временным паролем: до смены пароля — только /me и /password
+	staff := admin.newClient()
+	st, m, _ = staff.do("POST", "/api/admin/login", map[string]string{"email": "anna@example.com", "password": "temp-pass-1"})
+	if st != 200 || m["role"] != "staff" || m["must_change_password"] != true {
+		t.Fatalf("вход сотрудника: %d %v", st, m)
+	}
+	if st, m, _ := staff.do("GET", "/api/admin/bookings", nil); st != 403 || errCode(m) != "password_change_required" {
+		t.Fatalf("с временным паролем: %d %v", st, m)
+	}
+	if st, m, _ := staff.do("POST", "/api/admin/password", map[string]string{"new_password": "short"}); st != 422 || m["error"].(map[string]any)["fields"].(map[string]any)["new_password"] == nil {
+		t.Fatalf("короткий пароль: %d %v", st, m)
+	}
+	if st, m, _ := staff.do("POST", "/api/admin/password", map[string]string{"new_password": "anna-own-1"}); st != 200 || m["must_change_password"] != false {
+		t.Fatalf("смена временного пароля: %d %v", st, m)
+	}
+	if st, m, _ := staff.do("POST", "/api/admin/password", map[string]string{"current_password": "nope", "new_password": "anna-own-2"}); st != 422 || m["error"].(map[string]any)["fields"].(map[string]any)["current_password"] == nil {
+		t.Fatalf("неверный текущий пароль: %d %v", st, m)
+	}
+
+	// сотруднику — брони, заказы, меню, мероприятия; админские разделы — 403
+	for _, p := range []string{"/api/admin/bookings", "/api/admin/orders", "/api/admin/menu", "/api/admin/events"} {
+		if st, _, _ := staff.do("GET", p, nil); st != 200 {
+			t.Errorf("сотрудник %s: %d", p, st)
+		}
+	}
+	for _, p := range [][2]string{
+		{"GET", "/api/admin/content"}, {"PUT", "/api/admin/content"}, {"GET", "/api/admin/settings"}, {"PUT", "/api/admin/settings"},
+		{"POST", "/api/admin/notify/test"}, {"POST", "/api/admin/telegram/connect"}, {"POST", "/api/admin/telegram/disconnect"},
+		{"GET", "/api/admin/notifications"}, {"GET", "/api/admin/staff"}, {"POST", "/api/admin/staff"},
+		{"PUT", "/api/admin/staff/" + id}, {"POST", "/api/admin/staff/" + id + "/password"},
+	} {
+		st, m, _ := staff.do(p[0], p[1], map[string]any{"name": "x", "email": "y@example.com", "password": "temp-pass-1", "active": true})
+		if st != 403 || errCode(m) != "forbidden" {
+			t.Errorf("сотрудник %s %s: %d %v", p[0], p[1], st, m)
+		}
+	}
+	if st, m, _ := staff.do("GET", "/api/admin/me", nil); st != 200 || m["name"] != "Анна" || m["role"] != "staff" {
+		t.Fatalf("me сотрудника: %d %v", st, m)
+	}
+
+	// список и отключение: отключённый сразу теряет доступ и не может войти
+	if st, _, raw := admin.do("GET", "/api/admin/staff", nil); st != 200 || !strings.Contains(string(raw), "anna@example.com") || strings.Contains(string(raw), "password_hash") {
+		t.Fatalf("список: %d %s", st, raw)
+	}
+	if st, m, _ := admin.do("PUT", "/api/admin/staff/"+id, map[string]any{"name": "Анна", "email": "anna@example.com", "active": false}); st != 200 || m["active"] != false {
+		t.Fatalf("отключить: %d %v", st, m)
+	}
+	if st, _, _ := staff.do("GET", "/api/admin/bookings", nil); st != 401 {
+		t.Fatalf("отключённый: %d", st)
+	}
+	if st, _, _ := staff.do("POST", "/api/admin/login", map[string]string{"email": "anna@example.com", "password": "anna-own-1"}); st != 401 {
+		t.Fatalf("отключённый входит: %d", st)
+	}
+	// включить и сбросить пароль
+	admin.do("PUT", "/api/admin/staff/"+id, map[string]any{"name": "Анна", "email": "anna@example.com", "active": true})
+	if st, m, _ := admin.do("POST", "/api/admin/staff/"+id+"/password", map[string]string{"password": "temp-pass-2"}); st != 200 || m["must_change_password"] != true {
+		t.Fatalf("сброс пароля: %d %v", st, m)
+	}
+	if st, m, _ := staff.do("POST", "/api/admin/login", map[string]string{"email": "anna@example.com", "password": "temp-pass-2"}); st != 200 || m["must_change_password"] != true {
+		t.Fatalf("вход после сброса: %d %v", st, m)
+	}
+	// себя не отключить
+	_, me, _ := admin.do("GET", "/api/admin/me", nil)
+	if st, _, _ := admin.do("PUT", fmt.Sprintf("/api/admin/staff/%v", me["id"]), map[string]any{"name": "x", "email": "owner@example.com", "active": false}); st != 409 {
+		t.Fatalf("отключить себя: %d", st)
+	}
+	if st, _, _ := admin.do("GET", "/api/admin/me", nil); st != 200 {
+		t.Fatal("администратор на месте")
+	}
+}
+
+func TestSetupEndpoint(t *testing.T) {
+	c, _ := setup(t)
+	if st, m, _ := c.do("POST", "/api/admin/setup", map[string]string{"token": "нет-такого", "password": "boss-pass-1"}); st != 410 || errCode(m) != "setup_expired" {
+		t.Fatalf("неверная ссылка: %d %v", st, m)
+	}
+	if st, _, _ := c.do("POST", "/api/admin/setup/info", map[string]string{"token": ""}); st != 410 {
+		t.Fatalf("пустая ссылка: %d", st)
+	}
+}
+
+func TestLoginLimitNotBypassedByHeaders(t *testing.T) {
+	c, _ := setup(t)
+	try := func(hdr, val, email string) int {
+		b, _ := json.Marshal(map[string]string{"email": email, "password": "wrong"})
+		req, _ := http.NewRequest("POST", c.base+"/api/admin/login", bytes.NewReader(b))
+		req.Header.Set("Content-Type", "application/json")
+		if hdr != "" {
+			req.Header.Set(hdr, val)
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res.StatusCode
+	}
+	// подбор пароля с подменой True-Client-IP / X-Forwarded-For: лимит по адресу всё равно срабатывает
+	for i := 0; i < 8; i++ {
+		try("True-Client-IP", fmt.Sprintf("10.0.0.%d", i), "owner@example.com")
+	}
+	if st := try("X-Forwarded-For", "10.9.9.9", "owner@example.com"); st != 429 {
+		t.Fatalf("ждали 429 при подмене заголовков, получили %d", st)
+	}
+	// лимит на почту — с разных адресов (X-Real-IP ставит наш nginx)
+	for i := 0; i < 20; i++ {
+		try("X-Real-IP", fmt.Sprintf("10.1.0.%d", i), "staff@example.com")
+	}
+	if st := try("X-Real-IP", "10.2.0.1", "staff@example.com"); st != 429 {
+		t.Fatalf("ждали 429 по почте, получили %d", st)
+	}
+	if st := try("X-Real-IP", "10.2.0.2", "other@example.com"); st != 401 {
+		t.Fatalf("другая почта с нового адреса: %d", st)
+	}
+}

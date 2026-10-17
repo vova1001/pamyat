@@ -157,25 +157,35 @@ type loginIn struct {
 	Password string `json:"password"`
 }
 
+func (s *Server) setSession(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", HttpOnly: true, Secure: s.cookieSecure, SameSite: http.SameSiteLaxMode, MaxAge: int(service.SessionTTL.Seconds())})
+}
+
+func (s *Server) tooMany(w http.ResponseWriter) {
+	writeErr(w, http.StatusTooManyRequests, "rate_limited", "Слишком много попыток — подождите 15 минут", nil)
+}
+
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
-	if s.loginLimit.Blocked(r.RemoteAddr) {
-		writeErr(w, http.StatusTooManyRequests, "rate_limited", "Слишком много попыток — подождите 15 минут", nil)
-		return
-	}
 	var in loginIn
 	if !decode(w, r, &in) {
 		return
 	}
-	token, email, err := s.svc.Login(r.Context(), in.Email, in.Password)
+	email := strings.ToLower(strings.TrimSpace(in.Email))
+	if s.loginLimit.Blocked(r.RemoteAddr) || s.emailLimit.Blocked(email) {
+		s.tooMany(w)
+		return
+	}
+	token, acc, err := s.svc.Login(r.Context(), email, in.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrBadLogin) {
 			s.loginLimit.Fail(r.RemoteAddr)
+			s.emailLimit.Fail(email)
 		}
 		fail(w, r, err)
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", HttpOnly: true, Secure: s.cookieSecure, SameSite: http.SameSiteLaxMode, MaxAge: int(service.SessionTTL.Seconds())})
-	writeJSON(w, http.StatusOK, map[string]string{"email": email})
+	s.setSession(w, token)
+	writeJSON(w, http.StatusOK, acc)
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +197,115 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) me(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"email": r.Context().Value(ctxKey{}).(string)})
+	writeJSON(w, http.StatusOK, current(r).acc)
+}
+
+type setupIn struct {
+	Token    string `json:"token"`
+	Password string `json:"password"`
+}
+
+// setup — первый вход администратора по одноразовой ссылке: свой пароль и сразу вход.
+func (s *Server) setup(w http.ResponseWriter, r *http.Request) {
+	if s.loginLimit.Blocked(r.RemoteAddr) {
+		s.tooMany(w)
+		return
+	}
+	var in setupIn
+	if !decode(w, r, &in) {
+		return
+	}
+	token, acc, err := s.svc.SetupPassword(r.Context(), in.Token, in.Password)
+	if err != nil {
+		if errors.Is(err, service.ErrSetupExpired) {
+			s.loginLimit.Fail(r.RemoteAddr)
+		}
+		fail(w, r, err)
+		return
+	}
+	s.setSession(w, token)
+	writeJSON(w, http.StatusOK, acc)
+}
+
+// setupInfo — чья ссылка (почта для экрана первого входа); 410, если ссылка не действует.
+func (s *Server) setupInfo(w http.ResponseWriter, r *http.Request) {
+	if s.loginLimit.Blocked(r.RemoteAddr) {
+		s.tooMany(w)
+		return
+	}
+	var in setupIn
+	if !decode(w, r, &in) {
+		return
+	}
+	email, err := s.svc.SetupEmail(r.Context(), in.Token)
+	if errors.Is(err, service.ErrSetupExpired) {
+		s.loginLimit.Fail(r.RemoteAddr)
+	}
+	respond(w, r, http.StatusOK, map[string]string{"email": email}, err)
+}
+
+type passwordIn struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
+	if s.loginLimit.Blocked(r.RemoteAddr) {
+		s.tooMany(w)
+		return
+	}
+	var in passwordIn
+	if !decode(w, r, &in) {
+		return
+	}
+	cur := current(r)
+	if err := s.svc.ChangePassword(r.Context(), cur.acc, cur.token, in.CurrentPassword, in.NewPassword); err != nil {
+		if errors.Is(err, service.ErrWrongPassword) {
+			s.loginLimit.Fail(r.RemoteAddr)
+		}
+		fail(w, r, err)
+		return
+	}
+	acc := cur.acc
+	acc.MustChangePassword = false
+	writeJSON(w, http.StatusOK, acc)
+}
+
+// ---------- сотрудники (только администратор) ----------
+
+func (s *Server) listStaff(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.ListStaff(r.Context())
+	respond(w, r, http.StatusOK, v, err)
+}
+
+func (s *Server) createStaff(w http.ResponseWriter, r *http.Request) {
+	var in service.StaffCreate
+	if decode(w, r, &in) {
+		v, err := s.svc.CreateStaff(r.Context(), in)
+		respond(w, r, http.StatusCreated, v, err)
+	}
+}
+
+func (s *Server) updateStaff(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	var in service.StaffUpdate
+	if ok && decode(w, r, &in) {
+		v, err := s.svc.UpdateStaff(r.Context(), current(r).acc, id, in)
+		respond(w, r, http.StatusOK, v, err)
+	}
+}
+
+type resetIn struct {
+	Password string `json:"password"`
+}
+
+func (s *Server) resetStaffPassword(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	var in resetIn
+	if ok && decode(w, r, &in) {
+		v, err := s.svc.ResetStaffPassword(r.Context(), current(r).acc, id, in.Password)
+		respond(w, r, http.StatusOK, v, err)
+	}
 }
 
 // ---------- кабинет ----------

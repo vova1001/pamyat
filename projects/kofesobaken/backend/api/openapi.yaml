@@ -5,6 +5,11 @@ info:
   description: |
     API сайта и кабинета кофейни. Деньги — в копейках (целые числа). Даты — YYYY-MM-DD, время — HH:MM (местное время кофейни).
     Кабинет — по сессионной cookie `ks_session` (HttpOnly), выдаётся на /api/admin/login.
+    Роли: admin — всё; staff — брони, заказы, меню, мероприятия, фото к ним. Права проверяются на сервере:
+    без входа — 401 unauthorized, не та роль — 403 forbidden, вход с временным паролем — 403
+    password_change_required на всё, кроме /admin/me и /admin/password.
+    Только для администратора: /admin/content, /admin/settings, /admin/notify/*, /admin/telegram/*,
+    /admin/notifications, /admin/staff*.
     Ошибка всегда в одном формате — Error.
 servers:
   - url: /api
@@ -127,9 +132,80 @@ paths:
   /admin/me:
     get:
       tags: [admin]
+      summary: Кто вошёл (доступно и с временным паролем)
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
         "401": { $ref: "#/components/responses/Error" }
+  /admin/password:
+    post:
+      tags: [admin]
+      summary: Сменить свой пароль (временный — обязательно при первом входе). Другие сессии закрываются
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PasswordChange" } } }
+      responses:
+        "200": { description: Сменён, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /admin/setup:
+    post:
+      tags: [admin]
+      summary: Первый вход администратора по одноразовой ссылке (/admin#setup/<token>) — свой пароль и сразу вход
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/Setup" } } }
+      responses:
+        "200": { description: OK, ставит cookie, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "410": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /admin/staff:
+    get:
+      tags: [admin]
+      summary: Администратор и сотрудники (только администратор)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Staff" } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [admin]
+      summary: Новый сотрудник с временным паролем — при первом входе сменит его
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/StaffCreate" } } }
+      responses:
+        "201": { description: Создан, content: { application/json: { schema: { $ref: "#/components/schemas/Staff" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /admin/staff/{id}:
+    put:
+      tags: [admin]
+      summary: Имя, почта, доступ. active=false — сотрудник выходит из всех сессий. Администратора не меняет (404)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/StaffUpdate" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Staff" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /admin/staff/{id}/password:
+    post:
+      tags: [admin]
+      summary: Сбросить пароль сотрудника — новый временный; все его сессии закрываются
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [password], properties: { password: { type: string, minLength: 8 } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Staff" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
 
   /admin/bookings:
     get:
@@ -248,6 +324,7 @@ paths:
       tags: [admin]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Content" } } } }
+        "403": { $ref: "#/components/responses/Error" }
     put:
       tags: [admin]
       requestBody:
@@ -255,6 +332,7 @@ paths:
         content: { application/json: { schema: { $ref: "#/components/schemas/Content" } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Content" } } } }
+        "403": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
 
   /admin/settings:
@@ -262,6 +340,7 @@ paths:
       tags: [admin]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } } }
+        "403": { $ref: "#/components/responses/Error" }
     put:
       tags: [admin]
       requestBody:
@@ -269,6 +348,7 @@ paths:
         content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } } }
+        "403": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
 
   /admin/notify/test:
@@ -280,6 +360,7 @@ paths:
         content: { application/json: { schema: { type: object, required: [channel], properties: { channel: { $ref: "#/components/schemas/Channel" } } } } }
       responses:
         "200": { description: Отправлено, content: { application/json: { schema: { $ref: "#/components/schemas/Notification" } } } }
+        "403": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
 
   /admin/telegram/connect:
@@ -288,11 +369,13 @@ paths:
       summary: Подключить Telegram (сейчас заглушка — подключает и шлёт проверочное сообщение в журнал)
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } } }
+        "403": { $ref: "#/components/responses/Error" }
   /admin/telegram/disconnect:
     post:
       tags: [admin]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } } }
+        "403": { $ref: "#/components/responses/Error" }
 
   /admin/notifications:
     get:
@@ -300,6 +383,7 @@ paths:
       summary: Журнал отправленных уведомлений, свежие сверху
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Notification" } } } } }
+        "403": { $ref: "#/components/responses/Error" }
 
   /admin/uploads:
     post:
@@ -542,10 +626,44 @@ components:
       type: object
       required: [email, password]
       properties: { email: { type: string }, password: { type: string } }
+    Role: { type: string, enum: [admin, staff] }
     Me:
       type: object
-      required: [email]
-      properties: { email: { type: string } }
+      required: [id, email, name, role, must_change_password]
+      properties:
+        id: { type: integer, format: int64 }
+        email: { type: string }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        must_change_password: { type: boolean, description: вошёл с временным паролем — сначала смена }
+    PasswordChange:
+      type: object
+      required: [current_password, new_password]
+      properties: { current_password: { type: string }, new_password: { type: string, minLength: 8, maxLength: 72 } }
+    Setup:
+      type: object
+      required: [token, password]
+      properties: { token: { type: string }, password: { type: string, minLength: 8, maxLength: 72 } }
+    Staff:
+      type: object
+      required: [id, name, email, role, active, must_change_password, created_at, last_login_at]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        email: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        active: { type: boolean }
+        must_change_password: { type: boolean }
+        created_at: { type: string, format: date-time }
+        last_login_at: { type: string, format: date-time, nullable: true }
+    StaffCreate:
+      type: object
+      required: [name, email, password]
+      properties: { name: { type: string, maxLength: 60 }, email: { type: string }, password: { type: string, minLength: 8, maxLength: 72, description: временный пароль — администратор передаёт сотруднику сам } }
+    StaffUpdate:
+      type: object
+      required: [name, email, active]
+      properties: { name: { type: string, maxLength: 60 }, email: { type: string }, active: { type: boolean } }
 
     Booking:
       type: object

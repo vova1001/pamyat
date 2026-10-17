@@ -2,42 +2,33 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"log/slog"
-	"strings"
 
-	"golang.org/x/crypto/bcrypt"
+	"github.com/jackc/pgx/v5"
 
 	"kofesobaken/backend/internal/store"
 )
 
-// Bootstrap готовит пустую базу: владелец кабинета, тексты и настройки по умолчанию, стартовое меню.
-// Повторный запуск ничего не перезаписывает, кроме пароля владельца из окружения.
+// Bootstrap готовит пустую базу: администратор кабинета, тексты и настройки по умолчанию, стартовое меню.
+// Повторный запуск ничего не перезаписывает. ADMIN_PASSWORD (если задан) — только первый пароль
+// администратора: свой пароль, сменённый в кабинете, при перезапуске не сбрасывается.
+// Без ADMIN_PASSWORD администратор задаёт пароль сам по одноразовой ссылке (см. PendingSetup).
 func (s *Service) Bootstrap(ctx context.Context, adminEmail, adminPassword string, seedDemo bool) error {
-	if adminEmail != "" && adminPassword != "" {
-		h, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
-		if err != nil {
+	if email := normEmail(adminEmail); email != "" {
+		hash := ""
+		a, err := s.q.GetAdminByEmail(ctx, email)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
-		if _, err := s.q.UpsertAdmin(ctx, store.UpsertAdminParams{Email: strings.ToLower(adminEmail), PasswordHash: string(h)}); err != nil {
-			return err
+		if adminPassword != "" && (err != nil || a.PasswordHash == "") {
+			if hash, err = hashPassword(adminPassword); err != nil {
+				return err
+			}
 		}
-	} else if adminEmail != "" {
-		// Пароль не задан: при первом запуске создаём случайный и один раз пишем в лог.
-		if _, err := s.q.GetAdminByEmail(ctx, strings.ToLower(adminEmail)); err != nil {
-			b := make([]byte, 9)
-			_, _ = rand.Read(b)
-			pass := base64.RawURLEncoding.EncodeToString(b)
-			h, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
-			if err != nil {
-				return err
-			}
-			if _, err := s.q.UpsertAdmin(ctx, store.UpsertAdminParams{Email: strings.ToLower(adminEmail), PasswordHash: string(h)}); err != nil {
-				return err
-			}
-			slog.Warn("ADMIN_PASSWORD не задан — создан временный пароль кабинета; задайте свой в .env", "email", adminEmail, "password", pass)
+		if _, err := s.q.EnsureAdmin(ctx, store.EnsureAdminParams{Email: email, PasswordHash: hash}); err != nil {
+			return err
 		}
 	} else {
 		slog.Warn("ADMIN_EMAIL не задан — вход в кабинет не настроен")
@@ -63,6 +54,19 @@ func (s *Service) Bootstrap(ctx context.Context, adminEmail, adminPassword strin
 		return s.seedDemoEvents(ctx)
 	}
 	return nil
+}
+
+// PendingSetup выдаёт новую одноразовую ссылку первого входа, если пароль администратора ещё не задан.
+// Пустая строка — ссылка не нужна.
+func (s *Service) PendingSetup(ctx context.Context, adminEmail string) (string, error) {
+	a, err := s.q.GetAdminByEmail(ctx, normEmail(adminEmail))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil || a.PasswordHash != "" {
+		return "", err
+	}
+	return s.IssueSetupLink(ctx, a.Email)
 }
 
 // defaultMenu — меню из согласованного эскиза; цены примерные (подобраны по рынку), заказчик подтвердит.

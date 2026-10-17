@@ -147,18 +147,20 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 	return s.q.DeleteSession(ctx, hashToken(token))
 }
 
-// ChangePassword — смена своего пароля. Нужен текущий пароль; остальные сессии этого человека закрываются.
+// ChangePassword — смена своего пароля; остальные сессии этого человека закрываются.
+// Сразу после входа с временным паролем текущий не спрашиваем (его только что проверили при входе);
+// в остальных случаях нужен текущий пароль.
 func (s *Service) ChangePassword(ctx context.Context, acc Account, sessionToken, current, next string) error {
 	a, err := s.q.GetAdminByID(ctx, acc.ID)
 	if err != nil {
 		return notFound(err)
 	}
-	if bcrypt.CompareHashAndPassword([]byte(a.PasswordHash), []byte(current)) != nil {
+	if !a.MustChangePassword && bcrypt.CompareHashAndPassword([]byte(a.PasswordHash), []byte(current)) != nil {
 		return ErrWrongPassword
 	}
 	f := fields{}
 	checkPassword(f, "new_password", next)
-	if f["new_password"] == "" && next == current {
+	if f["new_password"] == "" && bcrypt.CompareHashAndPassword([]byte(a.PasswordHash), []byte(next)) == nil {
 		f.add("new_password", "Новый пароль должен отличаться от прежнего")
 	}
 	if err := f.err(); err != nil {
@@ -195,6 +197,18 @@ func (s *Service) IssueSetupLink(ctx context.Context, email string) (string, err
 		return "", err
 	}
 	return code, nil
+}
+
+// SetupEmail — чья ссылка первого входа (для подсказки на экране); ErrSetupExpired, если ссылка не действует.
+func (s *Service) SetupEmail(ctx context.Context, code string) (string, error) {
+	if code == "" {
+		return "", ErrSetupExpired
+	}
+	a, err := s.q.GetAdminBySetupToken(ctx, pgtype.Text{String: hashToken(code), Valid: true})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrSetupExpired
+	}
+	return a.Email, err
 }
 
 // SetupPassword — первый вход администратора по одноразовой ссылке: свой пароль и сразу вход.

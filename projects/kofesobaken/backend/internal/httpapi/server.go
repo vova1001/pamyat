@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -28,7 +29,8 @@ type Server struct {
 	uploadDir    string
 	cookieSecure bool
 	formLimit    *RateLimiter
-	loginLimit   *RateLimiter
+	loginLimit   *RateLimiter // неверные пароли с одного адреса
+	emailLimit   *RateLimiter // неверные пароли к одной почте — с любых адресов
 }
 
 type Options struct {
@@ -41,12 +43,13 @@ func New(svc *service.Service, pay payments.Provider, o Options) *Server {
 		svc: svc, pay: pay, uploadDir: o.UploadDir, cookieSecure: o.CookieSecure,
 		formLimit:  NewRateLimiter(10, time.Minute),   // 10 оформлений в минуту с одного адреса
 		loginLimit: NewRateLimiter(8, 15*time.Minute), // 8 неверных паролей за 15 минут
+		emailLimit: NewRateLimiter(20, 15*time.Minute),
 	}
 }
 
 func (s *Server) Routes() http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.RealIP, middleware.RequestID, logRequests, middleware.Recoverer)
+	r.Use(realIP, middleware.RequestID, logRequests, middleware.Recoverer)
 
 	r.Get("/healthz", s.health)
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", uploadsHandler(s.uploadDir)))
@@ -68,33 +71,51 @@ func (s *Server) Routes() http.Handler {
 		r.Route("/admin", func(r chi.Router) {
 			r.Post("/login", s.login)
 			r.Post("/logout", s.logout)
+			r.Post("/setup", s.setup)
+			r.Post("/setup/info", s.setupInfo)
 			r.Group(func(r chi.Router) {
-				r.Use(s.requireAdmin)
+				r.Use(s.requireLogin)
+				// доступно и с временным паролем — чтобы сменить его
 				r.Get("/me", s.me)
-				r.Get("/bookings", s.listBookings)
-				r.Post("/bookings/{id}/confirm", s.confirmBooking)
-				r.Post("/bookings/{id}/cancel", s.cancelBooking)
-				r.Get("/orders", s.listOrders)
-				r.Post("/orders/{id}/done", s.orderDone)
-				r.Post("/orders/{id}/cancel", s.cancelOrder)
-				r.Get("/menu", s.listMenu)
-				r.Post("/menu", s.createMenu)
-				r.Put("/menu/{id}", s.updateMenu)
-				r.Delete("/menu/{id}", s.deleteMenu)
-				r.Get("/events", s.listEvents)
-				r.Post("/events", s.createEvent)
-				r.Put("/events/{id}", s.updateEvent)
-				r.Delete("/events/{id}", s.deleteEvent)
-				r.Get("/events/{id}/signups", s.listSignups)
-				r.Get("/content", s.getContent)
-				r.Put("/content", s.putContent)
-				r.Get("/settings", s.getSettings)
-				r.Put("/settings", s.putSettings)
-				r.Post("/notify/test", s.testNotify)
-				r.Post("/telegram/connect", s.tgConnect)
-				r.Post("/telegram/disconnect", s.tgDisconnect)
-				r.Get("/notifications", s.listNotifications)
-				r.Post("/uploads", s.upload)
+				r.Post("/password", s.changePassword)
+
+				// сотрудник и администратор
+				r.Group(func(r chi.Router) {
+					r.Use(requirePasswordSet)
+					r.Get("/bookings", s.listBookings)
+					r.Post("/bookings/{id}/confirm", s.confirmBooking)
+					r.Post("/bookings/{id}/cancel", s.cancelBooking)
+					r.Get("/orders", s.listOrders)
+					r.Post("/orders/{id}/done", s.orderDone)
+					r.Post("/orders/{id}/cancel", s.cancelOrder)
+					r.Get("/menu", s.listMenu)
+					r.Post("/menu", s.createMenu)
+					r.Put("/menu/{id}", s.updateMenu)
+					r.Delete("/menu/{id}", s.deleteMenu)
+					r.Get("/events", s.listEvents)
+					r.Post("/events", s.createEvent)
+					r.Put("/events/{id}", s.updateEvent)
+					r.Delete("/events/{id}", s.deleteEvent)
+					r.Get("/events/{id}/signups", s.listSignups)
+					r.Post("/uploads", s.upload)
+				})
+
+				// только администратор: тексты и фото сайта, уведомления, сотрудники
+				r.Group(func(r chi.Router) {
+					r.Use(requirePasswordSet, requireRole(service.RoleAdmin))
+					r.Get("/content", s.getContent)
+					r.Put("/content", s.putContent)
+					r.Get("/settings", s.getSettings)
+					r.Put("/settings", s.putSettings)
+					r.Post("/notify/test", s.testNotify)
+					r.Post("/telegram/connect", s.tgConnect)
+					r.Post("/telegram/disconnect", s.tgDisconnect)
+					r.Get("/notifications", s.listNotifications)
+					r.Get("/staff", s.listStaff)
+					r.Post("/staff", s.createStaff)
+					r.Put("/staff/{id}", s.updateStaff)
+					r.Post("/staff/{id}/password", s.resetStaffPassword)
+				})
 			})
 		})
 		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
@@ -141,6 +162,14 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		writeErr(w, http.StatusUnauthorized, "unauthorized", "Войдите в кабинет", nil)
 	case errors.Is(err, service.ErrBadLogin):
 		writeErr(w, http.StatusUnauthorized, "bad_login", "Неверная почта или пароль", nil)
+	case errors.Is(err, service.ErrForbidden):
+		writeErr(w, http.StatusForbidden, "forbidden", "Этот раздел — только для администратора", nil)
+	case errors.Is(err, service.ErrMustChangePassword):
+		writeErr(w, http.StatusForbidden, "password_change_required", "Сначала смените временный пароль", nil)
+	case errors.Is(err, service.ErrWrongPassword):
+		writeErr(w, http.StatusUnprocessableEntity, "validation", "Неверный текущий пароль", map[string]string{"current_password": "Неверный текущий пароль"})
+	case errors.Is(err, service.ErrSetupExpired):
+		writeErr(w, http.StatusGone, "setup_expired", "Ссылка устарела или уже использована — попросите в студии новую", nil)
 	default:
 		slog.Error("ошибка запроса", "err", err, "path", r.URL.Path, "request_id", middleware.GetReqID(r.Context()))
 		writeErr(w, http.StatusInternalServerError, "internal", "Что-то пошло не так. Попробуйте ещё раз", nil)
@@ -195,18 +224,67 @@ func logRequests(next http.Handler) http.Handler {
 
 type ctxKey struct{}
 
-func (s *Server) requireAdmin(next http.Handler) http.Handler {
+// realIP — адрес посетителя для ограничений частоты. Доверяем только X-Real-IP, который ставит наш nginx
+// (перезаписывает его у каждого запроса); остальные заголовки посетитель может подделать. Без nginx — адрес
+// соединения без порта.
+func realIP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := strings.TrimSpace(r.Header.Get("X-Real-IP"))
+		if net.ParseIP(ip) == nil {
+			ip = r.RemoteAddr
+			if h, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+				ip = h
+			}
+		}
+		r.RemoteAddr = ip
+		next.ServeHTTP(w, r)
+	})
+}
+
+type session struct {
+	acc   service.Account
+	token string
+}
+
+func current(r *http.Request) session { return r.Context().Value(ctxKey{}).(session) }
+
+// requireLogin — любой вошедший (администратор или сотрудник); отключённый сотрудник — 401.
+func (s *Server) requireLogin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(cookieName)
 		if err != nil {
 			fail(w, r, service.ErrUnauthorized)
 			return
 		}
-		email, err := s.svc.SessionEmail(r.Context(), c.Value)
+		acc, err := s.svc.Session(r.Context(), c.Value)
 		if err != nil {
 			fail(w, r, err)
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, email)))
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, session{acc: acc, token: c.Value})))
 	})
+}
+
+// requirePasswordSet — с временным паролем доступны только /me и смена пароля.
+func requirePasswordSet(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if current(r).acc.MustChangePassword {
+			fail(w, r, service.ErrMustChangePassword)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// requireRole — права по роли проверяются на сервере, не только скрытием разделов в кабинете.
+func requireRole(role string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if current(r).acc.Role != role {
+				fail(w, r, service.ErrForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }

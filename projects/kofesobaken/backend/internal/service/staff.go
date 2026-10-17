@@ -31,6 +31,7 @@ type StaffCreate struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	Role     string `json:"role"` // staff (по умолчанию) или admin
 }
 
 type StaffUpdate struct {
@@ -39,7 +40,10 @@ type StaffUpdate struct {
 	Active bool   `json:"active"`
 }
 
-var errEmailTaken = &ConflictError{Msg: "Эта почта уже есть в кабинете"}
+var (
+	errEmailTaken = &ConflictError{Msg: "Эта почта уже есть в кабинете"}
+	errSelf       = &ConflictError{Msg: "Себя изменить здесь нельзя — свой пароль меняется при входе"}
+)
 
 func isUnique(err error) bool {
 	var pe *pgconn.PgError
@@ -65,12 +69,18 @@ func (s *Service) ListStaff(ctx context.Context) ([]Staff, error) {
 	return out, nil
 }
 
-// CreateStaff — новый сотрудник с временным паролем от администратора; при первом входе сменит его.
+// CreateStaff — новый вход с временным паролем от администратора; при первом входе человек сменит его.
 func (s *Service) CreateStaff(ctx context.Context, in StaffCreate) (Staff, error) {
 	name, email := cleanText(in.Name), normEmail(in.Email)
+	if in.Role == "" {
+		in.Role = RoleStaff
+	}
 	f := fields{}
 	checkStaff(f, name, email)
 	checkPassword(f, "password", in.Password)
+	if in.Role != RoleStaff && in.Role != RoleAdmin {
+		f.add("role", "Выберите роль")
+	}
 	if err := f.err(); err != nil {
 		return Staff{}, err
 	}
@@ -78,7 +88,7 @@ func (s *Service) CreateStaff(ctx context.Context, in StaffCreate) (Staff, error
 	if err != nil {
 		return Staff{}, err
 	}
-	a, err := s.q.CreateStaff(ctx, store.CreateStaffParams{Email: email, PasswordHash: h, Name: name})
+	a, err := s.q.CreateStaff(ctx, store.CreateStaffParams{Email: email, PasswordHash: h, Name: name, Role: in.Role})
 	if isUnique(err) {
 		return Staff{}, errEmailTaken
 	}
@@ -88,9 +98,12 @@ func (s *Service) CreateStaff(ctx context.Context, in StaffCreate) (Staff, error
 	return staffOf(a), nil
 }
 
-// UpdateStaff меняет имя, почту и доступ сотрудника. Отключённый сразу выходит из всех сессий.
-// Администратора здесь изменить нельзя (не найдено).
-func (s *Service) UpdateStaff(ctx context.Context, id int64, in StaffUpdate) (Staff, error) {
+// UpdateStaff меняет имя, почту и доступ. Отключённый сразу выходит из всех сессий.
+// actor — кто меняет: себя отключить нельзя (так в кабинете всегда остаётся администратор).
+func (s *Service) UpdateStaff(ctx context.Context, actor Account, id int64, in StaffUpdate) (Staff, error) {
+	if id == actor.ID {
+		return Staff{}, errSelf
+	}
 	name, email := cleanText(in.Name), normEmail(in.Email)
 	f := fields{}
 	checkStaff(f, name, email)
@@ -118,8 +131,11 @@ func (s *Service) UpdateStaff(ctx context.Context, id int64, in StaffUpdate) (St
 	return staffOf(out), nil
 }
 
-// ResetStaffPassword — новый временный пароль сотруднику (забыл свой). Все его сессии закрываются.
-func (s *Service) ResetStaffPassword(ctx context.Context, id int64, password string) (Staff, error) {
+// ResetStaffPassword — новый временный пароль (забыл свой). Все сессии этого человека закрываются.
+func (s *Service) ResetStaffPassword(ctx context.Context, actor Account, id int64, password string) (Staff, error) {
+	if id == actor.ID {
+		return Staff{}, errSelf
+	}
 	f := fields{}
 	checkPassword(f, "password", password)
 	if err := f.err(); err != nil {
