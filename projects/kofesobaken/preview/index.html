@@ -979,7 +979,7 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
 <script>
 /* ---------- 3D-карта: MapLibre GL + OpenFreeMap; без сети/WebGL остаётся снимок img/map-3d.jpg ---------- */
 (() => {
-  const box = document.getElementById('map3d'); if (!box) return;
+  const box = document.getElementById('map3d'); if (!box || window.claude) return;
   const CAFE = [39.771960, 47.229234];
   const LIB = 'https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl';
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
