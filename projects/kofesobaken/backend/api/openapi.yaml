@@ -139,7 +139,7 @@ paths:
   /admin/password:
     post:
       tags: [admin]
-      summary: Сменить свой пароль (временный — обязательно при первом входе). Другие сессии закрываются
+      summary: Сменить свой пароль. С временным паролем (must_change_password) текущий не нужен, иначе обязателен. Другие сессии закрываются
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/PasswordChange" } } }
@@ -161,6 +161,18 @@ paths:
         "422": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
 
+  /admin/setup/info:
+    post:
+      tags: [admin]
+      summary: Чья ссылка первого входа — почта для экрана «придумайте пароль»
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [token], properties: { token: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string } } } } } }
+        "410": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
   /admin/staff:
     get:
       tags: [admin]
@@ -170,7 +182,7 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
     post:
       tags: [admin]
-      summary: Новый сотрудник с временным паролем — при первом входе сменит его
+      summary: Новый вход (сотрудник или администратор) с временным паролем — при первом входе человек сменит его
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/StaffCreate" } } }
@@ -182,7 +194,7 @@ paths:
   /admin/staff/{id}:
     put:
       tags: [admin]
-      summary: Имя, почта, доступ. active=false — сотрудник выходит из всех сессий. Администратора не меняет (404)
+      summary: Имя, почта, доступ. active=false — человек выходит из всех сессий. Себя изменить нельзя (409)
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -196,7 +208,7 @@ paths:
   /admin/staff/{id}/password:
     post:
       tags: [admin]
-      summary: Сбросить пароль сотрудника — новый временный; все его сессии закрываются
+      summary: Сбросить пароль — новый временный; все сессии этого человека закрываются. Себе — нельзя (409)
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -205,6 +217,7 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Staff" } } } }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
 
   /admin/bookings:
@@ -638,7 +651,7 @@ components:
         must_change_password: { type: boolean, description: вошёл с временным паролем — сначала смена }
     PasswordChange:
       type: object
-      required: [current_password, new_password]
+      required: [new_password]
       properties: { current_password: { type: string }, new_password: { type: string, minLength: 8, maxLength: 72 } }
     Setup:
       type: object
@@ -659,7 +672,11 @@ components:
     StaffCreate:
       type: object
       required: [name, email, password]
-      properties: { name: { type: string, maxLength: 60 }, email: { type: string }, password: { type: string, minLength: 8, maxLength: 72, description: временный пароль — администратор передаёт сотруднику сам } }
+      properties:
+        name: { type: string, maxLength: 60 }
+        email: { type: string }
+        password: { type: string, minLength: 8, maxLength: 72, description: временный пароль — администратор передаёт человеку сам }
+        role: { $ref: "#/components/schemas/Role" }
     StaffUpdate:
       type: object
       required: [name, email, active]

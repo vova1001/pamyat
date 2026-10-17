@@ -487,7 +487,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Сменить свой пароль (временный — обязательно при первом входе). Другие сессии закрываются */
+        /** Сменить свой пароль. С временным паролем (must_change_password) текущий не нужен, иначе обязателен. Другие сессии закрываются */
         post: {
             parameters: {
                 query?: never;
@@ -564,6 +564,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/setup/info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Чья ссылка первого входа — почта для экрана «придумайте пароль» */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        token: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            email: string;
+                        };
+                    };
+                };
+                410: components["responses"]["Error"];
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/staff": {
         parameters: {
             query?: never;
@@ -594,7 +640,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Новый сотрудник с временным паролем — при первом входе сменит его */
+        /** Новый вход (сотрудник или администратор) с временным паролем — при первом входе человек сменит его */
         post: {
             parameters: {
                 query?: never;
@@ -636,7 +682,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Имя, почта, доступ. active=false — сотрудник выходит из всех сессий. Администратора не меняет (404) */
+        /** Имя, почта, доступ. active=false — человек выходит из всех сессий. Себя изменить нельзя (409) */
         put: {
             parameters: {
                 query?: never;
@@ -683,7 +729,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Сбросить пароль сотрудника — новый временный; все его сессии закрываются */
+        /** Сбросить пароль — новый временный; все сессии этого человека закрываются. Себе — нельзя (409) */
         post: {
             parameters: {
                 query?: never;
@@ -712,6 +758,7 @@ export interface paths {
                 };
                 403: components["responses"]["Error"];
                 404: components["responses"]["Error"];
+                409: components["responses"]["Error"];
                 422: components["responses"]["Error"];
             };
         };
@@ -1790,7 +1837,7 @@ export interface components {
             must_change_password: boolean;
         };
         PasswordChange: {
-            current_password: string;
+            current_password?: string;
             new_password: string;
         };
         Setup: {
@@ -1813,8 +1860,9 @@ export interface components {
         StaffCreate: {
             name: string;
             email: string;
-            /** @description временный пароль — администратор передаёт сотруднику сам */
+            /** @description временный пароль — администратор передаёт человеку сам */
             password: string;
+            role?: components["schemas"]["Role"];
         };
         StaffUpdate: {
             name: string;
