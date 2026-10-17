@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // часовой пояс кофейни без системных файлов
 
 	"github.com/jackc/pgx/v5/pgxpool"
 

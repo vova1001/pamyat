@@ -1,0 +1,280 @@
+---
+// Кабинет владельца. Разметка — из согласованного эскиза admin.html; данные — через API.
+import '../styles/admin.css';
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кабинет — КофеСобакен</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16.5" rx="5.2" ry="4.4"/><ellipse cx="5.2" cy="10.6" rx="2.2" ry="2.8" transform="rotate(-18 5.2 10.6)"/><ellipse cx="18.8" cy="10.6" rx="2.2" ry="2.8" transform="rotate(18 18.8 10.6)"/><ellipse cx="9" cy="6.2" rx="2.2" ry="2.9"/><ellipse cx="15" cy="6.2" rx="2.2" ry="2.9"/></symbol>
+  <symbol id="logo" viewBox="0 0 48 48"><circle cx="24" cy="24" r="24" fill="#E4572E"/><path d="M13 20h20v7a10 10 0 0 1-20 0z" fill="#FFF9F1"/><path d="M33 22h2.5a3.5 3.5 0 0 1 0 7H32" fill="none" stroke="#FFF9F1" stroke-width="2.4"/><path d="M14 20c-3-1-4.5 3-3.5 7 .6 2.2 2.4 2 3-.5z M32 20c3-1 4.5 3 3.5 7-.6 2.2-2.4 2-3-.5z" fill="#2A1A12"/><circle cx="19.5" cy="25" r="1.3" fill="#2A1A12"/><circle cx="26.5" cy="25" r="1.3" fill="#2A1A12"/><ellipse cx="23" cy="28" rx="1.8" ry="1.3" fill="#2A1A12"/><path d="M19 13c1-1.5-1-2.5 0-4M24 13c1-1.5-1-2.5 0-4M29 13c1-1.5-1-2.5 0-4" stroke="#FFF9F1" stroke-width="1.6" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><path d="M7 2v3M17 2v3M3.5 9h17M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V6A1.5 1.5 0 0 1 5 4.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="cup" viewBox="0 0 24 24"><path d="M4 8h13v5a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6zm13 1h1.5a2.5 2.5 0 0 1 0 5H17" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 2.5c.8 1-.8 2 0 3M12 2.5c.8 1-.8 2 0 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="star" viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="2" fill="currentColor"/><path d="m4 18 5-5 4 4 3-3 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="upload" viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="out" viewBox="0 0 24 24"><path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H10M15 8l4 4-4 4M19 12H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="phone" viewBox="0 0 24 24"><path d="M5 3.5h3.5l1.7 4.3-2.2 1.4a11 11 0 0 0 6.8 6.8l1.4-2.2 4.3 1.7V19a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 3.5 5.1 1.5 1.5 0 0 1 5 3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="tg" viewBox="0 0 24 24"><path d="M21.9 4.3 18.7 19.4c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 13 1.4 11.5c-1-.3-1-1 .2-1.5L20.5 2.9c.9-.3 1.6.2 1.4 1.4z" fill="currentColor"/></symbol>
+  <symbol id="users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="info" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z"/></symbol>
+  <symbol id="bag" viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11.2a1.5 1.5 0 0 1-1.5 1.3H7.7a1.5 1.5 0 0 1-1.5-1.3zM9 8V6.5a3 3 0 0 1 6 0V8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+</svg>
+
+<!-- ================= ВХОД ================= -->
+<div class="login" id="login" hidden>
+  <div class="login__art">
+    <a class="logo" href="/"><svg><use href="#logo"/></svg>КофеСобакен</a>
+    <div class="login__arch"><img src="/img/hero-pomeranian-coffee.jpg" alt=""></div>
+    <div><h2>Ваша<br><em>кофейня</em><br>под рукой</h2><span class="hand">брони, меню, мероприятия — здесь</span></div>
+    <div class="login__bg" aria-hidden="true">гав</div>
+  </div>
+  <div class="login__main">
+    <a class="logo" href="/"><svg><use href="#logo"/></svg>КофеСобакен</a>
+    <div class="login__hello">
+      <div class="login__sticker"><img src="/img/dog-cafe-table.jpg" alt=""></div>
+      <h1>Вход<br>в <em>кабинет</em></h1>
+      <p>Брони, меню, мероприятия<br>и тексты сайта.</p>
+    </div>
+    <form class="card form" id="loginForm" novalidate>
+      <label class="fld"><span>Почта</span><input class="inp" name="email" type="email" autocomplete="username" placeholder="you@mail.ru" required></label>
+      <div class="fld"><span>Пароль</span><div class="pass"><input class="inp" name="pass" type="password" autocomplete="current-password" placeholder="••••••••" required aria-label="Пароль"><button type="button" id="showPass" aria-label="Показать пароль"><svg><use href="#eye"/></svg></button></div></div>
+      <button class="btn btn--main" type="submit">Войти</button>
+      <p class="forgot">Забыли пароль? <a href="#login" id="forgot">Пришлём ссылку на почту</a></p>
+    </form>
+    <p class="login__foot"><svg><use href="#info"/></svg><span>Вход только для владельца кофейни. Сайт для гостей — <a href="/">открыть</a>.</span></p>
+  </div>
+</div>
+
+<!-- ================= КАБИНЕТ ================= -->
+<div class="app" id="app" hidden>
+  <aside class="side">
+    <a class="logo" href="/" target="_blank" rel="noopener"><svg><use href="#logo"/></svg><span>КофеСобакен<small>кабинет</small></span></a>
+    <nav class="snav" aria-label="Разделы кабинета">
+      <a href="#bookings" data-s="bookings"><svg><use href="#cal"/></svg>Брони<i class="cnt js-new"></i></a>
+      <a href="#orders" data-s="orders"><svg><use href="#bag"/></svg>Заказы<i class="cnt js-new-o"></i></a>
+      <a href="#menu" data-s="menu"><svg><use href="#cup"/></svg>Меню</a>
+      <a href="#events" data-s="events"><svg><use href="#star"/></svg>Мероприятия</a>
+      <a href="#content" data-s="content"><svg><use href="#image"/></svg>Фото и тексты</a>
+      <a href="#notify" data-s="notify"><svg><use href="#bell"/></svg>Уведомления</a>
+    </nav>
+    <div class="side__foot">
+      <div class="side__card"><b>Сайт работает</b>Изменения видны гостям сразу после «Сохранить».</div>
+      <a href="/" target="_blank" rel="noopener"><svg><use href="#ext"/></svg>Открыть сайт</a>
+      <button type="button" class="js-logout"><svg><use href="#out"/></svg>Выйти</button>
+    </div>
+  </aside>
+
+  <header class="top">
+    <a class="logo" href="/" target="_blank" rel="noopener"><svg><use href="#logo"/></svg><span>КофеСобакен<small>кабинет</small></span></a>
+    <div style="display:flex;gap:8px"><a class="ibtn" href="/" target="_blank" rel="noopener" aria-label="Открыть сайт"><svg><use href="#ext"/></svg></a><button class="ibtn js-logout" type="button" aria-label="Выйти"><svg><use href="#out"/></svg></button></div>
+  </header>
+
+  <main class="main">
+    <!-- ---------- БРОНИ ---------- -->
+    <section class="scr" id="s-bookings" hidden>
+      <div class="ph"><div><span class="eyebrow">брони столиков</span><h1>Брони</h1><p>Новые — сверху. Подтвердите бронь и позвоните гостю, если нужно что-то уточнить.</p></div></div>
+      <div class="stats">
+        <div class="stat stat--hot"><b class="js-new-n">0</b><span id="stNewL">новых, ждут ответа</span></div>
+        <div class="stat"><b id="stToday">0</b><span>на сегодня</span></div>
+        <div class="stat"><b id="stWeek">0</b><span>на неделю</span></div>
+        <div class="stat" style="display:none" data-desk><b id="stDog">0</b><span>с собакой</span></div>
+      </div>
+      <div class="chips" role="tablist" aria-label="Фильтр броней">
+        <button class="chipb on" data-bf="all">Все</button>
+        <button class="chipb" data-bf="new">Новые<i class="js-new-n">0</i></button>
+        <button class="chipb" data-bf="today">На сегодня</button>
+        <button class="chipb" data-bf="week">На неделю</button>
+        <button class="chipb" data-bf="no">Отменённые</button>
+      </div>
+      <div id="bkList"></div>
+    </section>
+
+    <!-- ---------- ЗАКАЗЫ (собран из компонентов «Брони») ---------- -->
+    <section class="scr" id="s-orders" hidden>
+      <div class="ph"><div><span class="eyebrow">с собой и доставка</span><h1>Заказы</h1><p>Оплаченные заказы, новые — сверху. Нажмите «Готово», когда заказ выдан или доставлен.</p></div></div>
+      <div class="stats">
+        <div class="stat stat--hot"><b class="js-new-on">0</b><span id="orNewL">новых, ждут</span></div>
+        <div class="stat"><b id="orToday">0</b><span>сегодня</span></div>
+        <div class="stat"><b id="orSum">0 ₽</b><span>оплачено сегодня</span></div>
+        <div class="stat" style="display:none" data-desk><b id="orDeliv">0</b><span>с доставкой сегодня</span></div>
+      </div>
+      <div class="chips" role="tablist" aria-label="Фильтр заказов">
+        <button class="chipb on" data-of="all">Все</button>
+        <button class="chipb" data-of="new">Новые<i class="js-new-on">0</i></button>
+        <button class="chipb" data-of="done">Готовые</button>
+        <button class="chipb" data-of="cancelled">Отменённые</button>
+      </div>
+      <div id="orList"></div>
+    </section>
+
+    <!-- ---------- МЕНЮ ---------- -->
+    <section class="scr" id="s-menu" hidden>
+      <div class="ph"><div><span class="eyebrow">меню на сайте</span><h1>Меню</h1><p>Названия, цены и фото. Скрытые позиции гости не видят.</p></div><button class="btn btn--main js-menu-new" type="button"><svg><use href="#plus"/></svg>Добавить позицию</button></div>
+      <div class="split">
+        <div>
+          <div class="tabs" role="tablist" aria-label="Категории">
+            <button class="chipb on" data-mc="all">Всё<i id="miCount">0</i></button>
+            <button class="chipb" data-mc="black">Чёрный кофе</button>
+            <button class="chipb" data-mc="milk">С молоком</button>
+            <button class="chipb" data-mc="other">Не кофе</button>
+          </div>
+          <div id="miList"></div>
+          <button class="addrow js-menu-new" type="button"><svg><use href="#plus"/></svg>Добавить позицию</button>
+        </div>
+        <form class="ed" id="menuEd" novalidate>
+          <div class="ed__head"><div><small class="js-mode">изменить</small><h3 class="js-title">Латте</h3></div><button class="ibtn ed__x js-close" type="button" aria-label="Закрыть" style="background:var(--cream)">×</button></div>
+          <label class="drop"><input type="file" accept="image/*" aria-label="Фото позиции"><img alt="" hidden><span class="drop__empty"><svg><use href="#upload"/></svg>Добавьте фото<small>нажмите или перетащите, JPG или PNG</small></span><span class="drop__acts"><span><svg><use href="#upload"/></svg>Заменить фото</span></span></label>
+          <label class="fld"><span>Название</span><input class="inp" name="name" required></label>
+          <label class="fld"><span>Коротко о напитке <i class="cnt-txt hint"></i></span><textarea class="inp" name="desc" maxlength="80" rows="2"></textarea></label>
+          <div class="two">
+            <label class="fld"><span>Цена</span><div class="suffix"><input class="inp" name="price" inputmode="numeric"><b>₽</b></div></label>
+            <label class="fld"><span>Раздел</span><select class="inp" name="cat"><option value="black">Чёрный кофе</option><option value="milk">С молоком</option><option value="other">Не кофе</option></select></label>
+          </div>
+          <div>
+            <label class="sw"><span>Показывать на сайте<small>выключите, если закончилось</small></span><input type="checkbox" name="vis" checked></label>
+            <label class="sw"><span>Метка «фирменный»</span><input type="checkbox" name="sig"></label>
+          </div>
+          <div class="ed__acts"><button class="btn btn--main" type="submit">Сохранить</button><button class="btn btn--text js-del" type="button">Удалить</button></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ---------- МЕРОПРИЯТИЯ ---------- -->
+    <section class="scr" id="s-events" hidden>
+      <div class="ph"><div><span class="eyebrow">афиша на сайте</span><h1>Мероприятия</h1><p>Встречи, мастер-классы, дни рождения собак. Гости записываются на сайте — список и свободные места здесь.</p></div><button class="btn btn--main js-ev-new" type="button"><svg><use href="#plus"/></svg>Создать мероприятие</button></div>
+      <div class="split">
+        <div id="evList"></div>
+        <form class="ed" id="evEd" novalidate>
+          <div class="ed__head"><div><small class="js-mode">изменить</small><h3 class="js-title">Встреча собаководов</h3></div><button class="ibtn ed__x js-close" type="button" aria-label="Закрыть" style="background:var(--cream)">×</button></div>
+          <label class="drop"><input type="file" accept="image/*" aria-label="Фото мероприятия"><img alt="" hidden><span class="drop__empty"><svg><use href="#upload"/></svg>Добавьте фото<small>его увидят на карточке мероприятия</small></span><span class="drop__acts"><span><svg><use href="#upload"/></svg>Заменить фото</span></span></label>
+          <label class="fld"><span>Название</span><input class="inp" name="name" placeholder="Например, встреча собаководов" required></label>
+          <label class="fld"><span>Что это</span><select class="inp" name="type"><option>встреча</option><option>мастер-класс</option><option>праздник</option><option>другое</option></select></label>
+          <div class="two">
+            <label class="fld"><span>Дата</span><input class="inp" name="date" type="date" required></label>
+            <label class="fld"><span>Время</span><input class="inp" name="time" type="time" step="900" required></label>
+          </div>
+          <label class="fld"><span>Описание <i class="cnt-txt hint"></i></span><textarea class="inp" name="desc" maxlength="200" rows="3" placeholder="Коротко: что будет и для кого"></textarea></label>
+          <div class="two">
+            <div class="fld"><span>Мест</span><div class="stepper" id="evSeats"><button type="button" data-d="-1" aria-label="Меньше мест">−</button><output>15</output><button type="button" data-d="1" aria-label="Больше мест">+</button></div></div>
+            <label class="fld"><span>Цена</span><div class="suffix"><input class="inp" name="price" inputmode="numeric" placeholder="бесплатно"><b>₽</b></div></label>
+          </div>
+          <div>
+            <label class="sw"><span>Можно со своей собакой</span><input type="checkbox" name="dogs" checked></label>
+            <label class="sw"><span>Запись на сайте<small>кнопка «Записаться» у карточки</small></span><input type="checkbox" name="signup" checked></label>
+          </div>
+          <div class="who" id="evWho"></div>
+          <div class="ed__acts"><button class="btn btn--main" type="submit">Опубликовать</button><button class="btn btn--ghost btn--sm js-draft" type="button">В черновик</button><button class="btn btn--text js-del" type="button">Удалить</button></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ---------- ФОТО И ТЕКСТЫ ---------- -->
+    <section class="scr" id="s-content" hidden>
+      <div class="ph"><div><span class="eyebrow">главная страница</span><h1>Фото и тексты</h1><p>Главные фото и тексты сайта по блокам — в том же порядке, что на сайте.</p></div></div>
+      <div id="contentForm">
+        <div class="blk">
+          <div class="blk__head"><h3><i>01</i>Первый экран</h3><a href="/#hero" target="_blank" rel="noopener">на сайте<svg><use href="#ext"/></svg></a></div>
+          <div class="hero-ed">
+            <label class="arch-ed"><input type="file" accept="image/*" aria-label="Главное фото" data-photo="hero_photo"><img src="/img/hero-pomeranian-coffee.jpg" alt="Главное фото" data-k="hero_photo"><span><svg><use href="#upload"/></svg>Заменить главное фото</span></label>
+            <div class="form">
+              <label class="fld"><span>Подпись над названием</span><input class="inp" data-k="hero_chip" maxlength="80"></label>
+              <label class="fld"><span>Текст под названием <i class="cnt-txt hint"></i></span><textarea class="inp" data-k="hero_lead" maxlength="160" rows="3"></textarea></label>
+              <div class="two"><label class="fld"><span>Адрес</span><input class="inp" data-k="address" maxlength="80"></label><label class="fld"><span>Часы работы</span><input class="inp" data-k="hours" maxlength="80"></label></div>
+            </div>
+          </div>
+        </div>
+        <div class="blk">
+          <div class="blk__head"><h3><i>02</i>Почему к нам</h3><a href="/#why" target="_blank" rel="noopener">на сайте<svg><use href="#ext"/></svg></a></div>
+          <div class="tiles" id="whyTiles"></div>
+        </div>
+        <div class="blk">
+          <div class="blk__head"><h3><i>03</i>Наши собаки</h3><a href="/#dogs" target="_blank" rel="noopener">на сайте<svg><use href="#ext"/></svg></a></div>
+          <div class="dogs-ed" id="dogsEd">
+            <button class="dg dg--add" type="button" id="addDog"><svg><use href="#plus"/></svg>Добавить собаку</button>
+          </div>
+        </div>
+        <div class="blk">
+          <div class="blk__head"><h3><i>04</i>Как нас найти</h3><a href="/#find" target="_blank" rel="noopener">на сайте<svg><use href="#ext"/></svg></a></div>
+          <label class="fld"><span>Как пройти</span><textarea class="inp" rows="2" data-k="how_to_get" maxlength="300" placeholder="Вход со двора, ориентир — …, парковка — …"></textarea></label>
+        </div>
+        <div class="blk">
+          <div class="blk__head"><h3><i>05</i>Заказ и доставка</h3><a href="/#order" target="_blank" rel="noopener">на сайте<svg><use href="#ext"/></svg></a></div>
+          <div class="two">
+            <label class="fld"><span>Доставка — от суммы</span><div class="suffix"><input class="inp" id="delivMin" inputmode="numeric"><b>₽</b></div></label>
+            <label class="fld"><span>Радиус доставки</span><div class="suffix"><input class="inp" id="delivRadius" inputmode="numeric"><b>км</b></div></label>
+          </div>
+          <p class="hint">Доставка бесплатная. Если заказ меньше этой суммы — гостю доступен только «Заберу сам» с подсказкой, сколько добавить.</p>
+        </div>
+        <div class="savebar" id="saveBar"><span id="saveTxt">Всё сохранено</span><button class="btn btn--main" type="button" id="saveBtn">Сохранить</button></div>
+      </div>
+    </section>
+
+    <!-- ---------- УВЕДОМЛЕНИЯ ---------- -->
+    <section class="scr" id="s-notify" hidden>
+      <div class="ph"><div><span class="eyebrow">новые брони и записи</span><h1>Уведомления</h1><p>Куда присылать новые брони, заказы и записи на мероприятия.</p></div></div>
+      <div class="ngrid">
+        <div class="nc">
+          <div class="nc__head"><span class="nc__ic" style="background:var(--pink);color:var(--tomato)"><svg><use href="#mail"/></svg></span><div><h3>Почта</h3><small>письмо о каждой новой брони и заказе</small></div><label class="sw" style="padding:0"><input type="checkbox" id="nEmailOn" aria-label="Почта включена"></label></div>
+          <label class="fld"><span>Адрес</span><input class="inp" type="email" id="nEmail" autocomplete="email"></label>
+          <button class="btn btn--soft btn--sm js-test" type="button" data-ch="email">Отправить проверочное письмо</button>
+        </div>
+        <div class="nc" id="tgCard">
+          <div class="nc__head"><span class="nc__ic" style="background:#DDEFFA;color:#2AABEE"><svg><use href="#tg"/></svg></span><div><h3>Telegram</h3><small>сообщение с кнопками «Подтвердить» и «Позвонить»</small></div></div>
+          <div class="tg-off">
+            <ol class="steps"><li>Нажмите «Подключить Telegram» — откроется бот кофейни.</li><li>В боте нажмите «Старт».</li><li>Готово: сюда придёт проверочное сообщение.</li></ol>
+            <button class="btn btn--main" type="button" id="tgConnect" style="margin-top:14px;width:100%"><svg><use href="#tg"/></svg>Подключить Telegram</button>
+          </div>
+          <div class="tg-on"><span>Подключён: <b id="tgChat">@ludi_bydte_dobree</b></span><button class="btn btn--text" type="button" id="tgOff">Отключить</button></div>
+        </div>
+        <div class="nc nc--wide">
+          <div><h3 style="margin-bottom:8px">Что присылать</h3>
+            <label class="sw"><span>Новая бронь столика</span><input type="checkbox" data-n="on_booking"></label>
+            <label class="sw"><span>Запись на мероприятие</span><input type="checkbox" data-n="on_signup"></label>
+            <label class="sw"><span>На мероприятие не осталось мест</span><input type="checkbox" data-n="on_full"></label>
+            <label class="sw"><span>Заказ с собой и доставка</span><input type="checkbox" data-n="on_order"></label>
+          </div>
+          <div><h3 style="margin-bottom:12px" id="nLastTitle">Так выглядит сообщение</h3>
+            <div class="bubble-wrap" id="nBubbles">
+              <div class="bubble"><b>Новая бронь столика</b>Анна · +7 (900) 000-00-01<br>Сб, 17 октября, 18:00 · 2 гостя · с собакой<small>12:41</small></div>
+              <div class="bubble-btns"><span>Подтвердить</span><span>Позвонить</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar" aria-label="Разделы кабинета">
+    <a href="#bookings" data-s="bookings"><svg><use href="#cal"/></svg>Брони<i class="cnt js-new"></i></a>
+    <a href="#orders" data-s="orders"><svg><use href="#bag"/></svg>Заказы<i class="cnt js-new-o"></i></a>
+    <a href="#menu" data-s="menu"><svg><use href="#cup"/></svg>Меню</a>
+    <a href="#events" data-s="events"><svg><use href="#star"/></svg>События</a>
+    <a href="#content" data-s="content"><svg><use href="#image"/></svg>Фото</a>
+    <a href="#notify" data-s="notify"><svg><use href="#bell"/></svg>Уведомл.</a>
+  </nav>
+</div>
+<div class="ovl" id="ovl"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>import '../scripts/admin.ts';</script>
+</body>
+</html>

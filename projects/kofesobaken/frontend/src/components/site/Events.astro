@@ -1,0 +1,49 @@
+---
+import type { PublicEvent } from '../../lib/types';
+import { dayBadge, dayLong, dayNum, rich, rub, plural } from '../../lib/format';
+interface Props { events: PublicEvent[] }
+const { events } = Astro.props;
+const delays = ['', ' rv-d1', ' rv-d2', ' rv-d3'];
+const seatsText = (e: PublicEvent) =>
+  e.seats_left > 0 ? `осталось ${e.seats_left} из ${e.seats} ${plural(e.seats, 'места', 'мест', 'мест')}` : 'мест нет';
+const fill = (e: PublicEvent) => Math.round(((e.seats - e.seats_left) / e.seats) * 100);
+---
+<section class={'sec events' + (events.length ? '' : ' is-empty')} id="events">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><span class="num rv">04 — мероприятия</span>
+      <h2 class="rv rv-d1">Приходите <em>на&nbsp;встречу</em></h2></div>
+      <p class="rv rv-d2">Встречи собаководов, мастер-классы и дни рождения собак. Выберите событие и запишитесь — места ограничены.</p>
+    </div>
+    <div class="ev__grid">
+      {events.map((e, i) => {
+        const full = e.seats_left <= 0;
+        return (
+          <article class={'ev' + (i === 0 ? ' ev--main' : '') + (full ? ' ev--full' : '') + ' rv' + delays[i % 4]}
+            data-ev-id={e.id} data-ev={e.title} data-when={`${dayLong(e.date)} · ${e.time}`} data-img={e.photo || '/img/interior-light.jpg'}
+            data-price={e.price_kop} data-left={e.seats_left} data-dogs={e.dogs_allowed ? '1' : '0'}>
+            <div class="ev__img curtain"><img src={e.photo || '/img/interior-light.jpg'} alt={e.title} loading="lazy"><span class="ev__date"><b>{dayNum(e.date)}</b><small>{dayBadge(e.date)}</small></span><span class="ev__type">{e.kind}</span></div>
+            <div class="ev__cut" aria-hidden="true"></div>
+            <div class="ev__body">
+              <div class="ev__meta"><span><svg><use href="#clock"/></svg>{e.time}</span>{e.dogs_allowed && <span><svg><use href="#paw"/></svg>можно со своей собакой</span>}<span>{e.price_kop > 0 ? rub(e.price_kop) + ' с человека' : 'бесплатно'}</span></div>
+              <h3>{e.title}</h3>
+              {e.description && <p set:html={rich(e.description)} />}
+              <div class="ev__foot">
+                <div class="seats">{seatsText(e)}<i style={`--fill:${fill(e)}%`}></i></div>
+                {e.signup_enabled && (full
+                  ? <button class="btn" type="button" disabled>Мест нет</button>
+                  : <button class="btn btn--main js-signup" type="button">Записаться{i === 0 && <svg><use href="#arrow"/></svg>}</button>)}
+              </div>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+    <div class="ev__empty">
+      <svg class="big" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="36" fill="#F6D277"/><use href="#cal" x="20" y="20" width="32" height="32" style="color:#2A1A12"/></svg>
+      <h3>Скоро объявим</h3>
+      <p>Готовим встречи собаководов, мастер-классы и праздники для собак. Напишите нам в Telegram — расскажем первыми.</p>
+      <a class="btn btn--ghost" href="https://t.me/ludi_bydte_dobree" target="_blank" rel="noopener">Узнать первыми в Telegram</a>
+    </div>
+  </div>
+</section>

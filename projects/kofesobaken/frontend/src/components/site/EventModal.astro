@@ -1,0 +1,27 @@
+<div class="modal" id="evModal" role="dialog" aria-modal="true" aria-labelledby="evTitle">
+  <div class="modal__box">
+    <button class="modal__x" type="button" aria-label="Закрыть" data-close>×</button>
+    <div class="modal__ev"><img id="evImg" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt=""><div><small id="evWhen"></small><h3 id="evTitle"></h3></div></div>
+    <form class="form" id="evForm" novalidate>
+      <label class="fld"><span>Ваше имя</span><input class="inp" name="name" autocomplete="given-name" placeholder="Анна" maxlength="60" required></label>
+      <div class="fld"><span>Как с вами связаться</span>
+        <div class="seg contact-seg"><input type="radio" name="via" id="viaP" value="phone" checked><label for="viaP">Телефон</label><input type="radio" name="via" id="viaT" value="tg"><label for="viaT">Telegram</label></div>
+      </div>
+      <label class="fld"><input class="inp" name="contact" id="evContact" type="tel" inputmode="tel" placeholder="+7 (900) 000-00-00" aria-label="Телефон или Telegram" required></label>
+      <div class="two">
+        <div class="fld"><span>Сколько человек</span><div class="stepper" id="evPeople"><button type="button" aria-label="Меньше" data-d="-1">−</button><output>1</output><button type="button" aria-label="Больше" data-d="1">+</button></div></div>
+        <div class="fld" id="evDogFld"><span>С собакой?</span>
+          <div class="seg"><input type="radio" name="evdog" id="evDogY" value="yes" checked><label for="evDogY"><svg><use href="#paw"/></svg>Да</label><input type="radio" name="evdog" id="evDogN" value="no"><label for="evDogN">Нет</label></div>
+        </div>
+      </div>
+      <label class="consent"><input type="checkbox" name="consent" required checked><span>Согласен на обработку персональных данных <span class="todo">[ссылка на политику]</span></span></label>
+      <button class="btn btn--main" type="submit" id="evSubmit">Записаться<svg><use href="#arrow"/></svg></button>
+    </form>
+    <div class="success" aria-live="polite">
+      <svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#B7C4A2"/><use href="#paw" x="18" y="18" width="36" height="36" fill="#2A1A12"/></svg>
+      <h3>Вы записаны!</h3>
+      <p style="color:var(--soft)" id="evDoneText">Ждём вас. Если планы изменятся — напишите нам в Telegram.</p>
+      <button class="btn btn--ghost" type="button" data-close>Готово</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,27 @@
+---
+import type { Content } from '../../lib/types';
+import { rich } from '../../lib/format';
+interface Props { content: Content }
+const { content: c } = Astro.props;
+const delays = ['', ' rv-d1', ' rv-d2'];
+---
+<section class="sec" id="why">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><span class="num rv">01 — почему к нам</span>
+      <h2 class="rv rv-d1">Кофейня, где&nbsp;вам <em>виляют&nbsp;хвостом</em></h2></div>
+      <p class="rv rv-d2">Обычная кофейня — это кофе и столик. У нас ещё и маленькие собаки, которые встречают гостей прямо в зале.</p>
+    </div>
+    <div class="why__grid">
+      {c.why.map((w, i) => (
+        <article class={'why-card rv' + delays[i]}>
+          <div class="why-card__img curtain"><img src={w.photo} alt={w.title} loading="lazy"></div>
+          <div class="why-card__body"><span class="k">{i + 1}</span><h3>{w.title}</h3><p set:html={rich(w.text)} /></div>
+        </article>
+      ))}
+    </div>
+    <p class="phrase" id="phrase" aria-label="Кофе вкуснее, когда рядом кто-то виляет хвостом">
+      <span class="w">Кофе</span> <span class="pill"><img src="/img/cup-wood.jpg" alt=""></span> <span class="w">вкуснее,</span> <span class="w">когда</span> <span class="w">рядом</span> <span class="w">кто-то</span> <span class="pill"><img src="/img/dog-in-cafe.jpg" alt=""></span> <span class="w">виляет</span> <span class="w">хвостом</span>
+    </p>
+  </div>
+</section>

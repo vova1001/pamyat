@@ -1,0 +1,40 @@
+---
+import { rub } from '../../lib/format';
+interface Props { minKop: number; radiusKm: number }
+const { minKop, radiusKm } = Astro.props;
+---
+<section class="sec order" id="order">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><span class="num rv">06 — с собой и доставка</span>
+      <h2 class="rv rv-d1">Кофе <em>с собой</em> или&nbsp;домой</h2></div>
+      <p class="rv rv-d2">Соберите заказ — заберёте без очереди или привезём. Доставка бесплатная — при заказе от {rub(minKop)}, в радиусе {radiusKm} км.</p>
+    </div>
+    <div class="order__grid">
+      <div class="order__visual curtain rv">
+        <img src="/img/iced-latte.jpg" alt="Кофе со льдом в стакане" loading="lazy">
+        <div class="steps"><div><b>1</b>Выберите напитки в меню</div><div><b>2</b>Самовывоз или доставка</div><div><b>3</b>Заберите горячим</div></div>
+      </div>
+      <div class="card rv rv-d1" id="orderCard" data-min={minKop}>
+        <div class="order__form">
+          <div class="seg mode" role="radiogroup" aria-label="Способ получения"><input type="radio" name="mode" id="mPick" value="pickup" checked><label for="mPick"><svg><use href="#cup"/></svg>Заберу сам</label><input type="radio" name="mode" id="mDel" value="delivery"><label for="mDel">Доставка</label></div>
+          <p class="deliv-hint" id="delivHint" aria-live="polite"></p>
+          <ul class="cart" id="cart"></ul>
+          <div class="cart__empty" id="cartEmpty">Пока пусто. <a href="#menu">Выберите напитки в меню</a></div>
+          <div class="deliv">
+            <label class="fld"><span>Адрес доставки</span><input class="inp" id="orderAddr" autocomplete="street-address" maxlength="200" placeholder="Улица, дом, квартира"></label>
+          </div>
+          <label class="fld" style="margin-bottom:14px"><span>Телефон</span><input class="inp" id="orderPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 (900) 000-00-00"></label>
+          <div class="total"><span>Итого</span><b id="total">0 ₽</b></div>
+          <button class="btn btn--dark" style="width:100%" id="orderBtn" type="button">Оформить заказ<svg><use href="#arrow"/></svg></button>
+        </div>
+        <div class="success" aria-live="polite">
+          <svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#B7C4A2"/><use href="#paw" x="18" y="18" width="36" height="36" fill="#2A1A12"/></svg>
+          <h3 id="orderDoneTitle">Заказ оплачен!</h3>
+          <p style="color:var(--soft)" id="orderDoneText">Уже готовим. Позвоним, если что-то уточнить.</p>
+          <button class="btn btn--ghost" type="button" id="orderAgain">Новый заказ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

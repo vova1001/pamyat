@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"strings"
@@ -22,8 +24,23 @@ func (s *Service) Bootstrap(ctx context.Context, adminEmail, adminPassword strin
 		if _, err := s.q.UpsertAdmin(ctx, store.UpsertAdminParams{Email: strings.ToLower(adminEmail), PasswordHash: string(h)}); err != nil {
 			return err
 		}
+	} else if adminEmail != "" {
+		// Пароль не задан: при первом запуске создаём случайный и один раз пишем в лог.
+		if _, err := s.q.GetAdminByEmail(ctx, strings.ToLower(adminEmail)); err != nil {
+			b := make([]byte, 9)
+			_, _ = rand.Read(b)
+			pass := base64.RawURLEncoding.EncodeToString(b)
+			h, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+			if err != nil {
+				return err
+			}
+			if _, err := s.q.UpsertAdmin(ctx, store.UpsertAdminParams{Email: strings.ToLower(adminEmail), PasswordHash: string(h)}); err != nil {
+				return err
+			}
+			slog.Warn("ADMIN_PASSWORD не задан — создан временный пароль кабинета; задайте свой в .env", "email", adminEmail, "password", pass)
+		}
 	} else {
-		slog.Warn("ADMIN_EMAIL/ADMIN_PASSWORD не заданы — вход в кабинет не настроен")
+		slog.Warn("ADMIN_EMAIL не задан — вход в кабинет не настроен")
 	}
 	for key, v := range map[string]any{keyContent: DefaultContent(), keyOrder: DefaultOrderSettings(), keyNotify: DefaultNotify()} {
 		raw, _ := json.Marshal(v)

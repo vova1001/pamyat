@@ -1,0 +1,29 @@
+---
+import type { Content } from '../../lib/types';
+import { cap, rich } from '../../lib/format';
+import MapBlock from './MapBlock.astro';
+interface Props { content: Content }
+const { content: c } = Astro.props;
+const city = 'Ростов-на-Дону';
+const route = 'https://yandex.ru/maps/?text=' + encodeURIComponent(`${city}, ${c.address.replace(/^ул\.\s*/, 'улица ')}`);
+---
+<section class="sec" id="find">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><span class="num rv">07 — как нас найти</span>
+      <h2 class="rv rv-d1">Ждём на <em>Сарьяна</em></h2></div>
+    </div>
+    <div class="find__grid">
+      <MapBlock />
+      <div class="addr rv rv-d1">
+        <p class="addr__big">{c.address}<br><span style="color:var(--soft);font-size:.6em">{city}</span></p>
+        <dl>
+          <div><dt>Часы работы</dt><dd>{cap(c.hours).replace(/^(Ежедневно)\s/, '$1, ')}</dd></div>
+          <div><dt>Как пройти</dt><dd set:html={c.how_to_get ? rich(c.how_to_get) : '<span class="todo">[УТОЧНИТЬ: вход, ориентир, парковка]</span>'} /></div>
+        </dl>
+        <a class="btn btn--main" target="_blank" rel="noopener" href={route}><svg><use href="#pin"/></svg>Построить маршрут</a>
+        <div class="addr__photo curtain"><img src="/img/interior-light.jpg" alt="Светлый уютный зал кофейни (фото для примера)" loading="lazy"></div>
+      </div>
+    </div>
+  </div>
+</section>

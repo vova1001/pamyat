@@ -1,0 +1,43 @@
+---
+import type { Content } from '../../lib/types';
+import { rich } from '../../lib/format';
+interface Props { content: Content }
+const { content: c } = Astro.props;
+---
+<section class="hero" id="hero">
+  <div class="paw-trail" id="pawTrail" aria-hidden="true"></div>
+  <div class="wrap hero__grid">
+    <div class="hero__text">
+      <span class="chip fade-in"><i><svg><use href="#paw"/></svg></i>{c.hero_chip}</span>
+      <h1 aria-label="КофеСобакен">
+        <span class="ln"><span data-split>Кофе</span></span>
+        <span class="ln"><span class="accent" data-split>Собакен</span></span>
+      </h1>
+      <p class="hero__lead fade-in" style="animation-delay:.5s" set:html={rich(c.hero_lead)} />
+      <div class="hero__btns fade-in" style="animation-delay:.65s">
+        <a class="btn btn--main" href="#booking"><svg><use href="#cal"/></svg>Забронировать столик</a>
+        <a class="btn btn--ghost" href="#order"><svg><use href="#cup"/></svg>Заказать кофе</a>
+      </div>
+      <div class="hero__meta fade-in" style="animation-delay:.8s">
+        <span><svg><use href="#pin"/></svg>{c.address}</span>
+        <span><svg><use href="#clock"/></svg>{c.hours}</span>
+      </div>
+    </div>
+    <div class="hero__media fade-in" style="animation-delay:.3s">
+      <div class="arch"><img src={c.hero_photo} alt="Маленькая собака выглядывает из-за столика с чашкой кофе" fetchpriority="high"></div>
+      <div class="sticker sticker--b" data-speed="-0.06"><img src="/img/latte-pour.jpg" alt="Бариста рисует латте-арт"></div>
+      <div class="sticker sticker--a" data-speed="0.08"><img src="/img/dog-cafe-table.jpg" alt="Собака у столика в кафе"><span class="hand">гав, привет!</span></div>
+      <div class="badge" aria-hidden="true">
+        <svg class="ring" viewBox="0 0 120 120"><defs><path id="circ" d="M60 60m-46 0a46 46 0 1 1 92 0a46 46 0 1 1-92 0"/></defs><text><textPath href="#circ" textLength="285" lengthAdjust="spacing">кофе · собаки · уют · кофе · собаки · уют · </textPath></text></svg>
+        <svg class="cup"><use href="#logo"/></svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="marquee-wrap"><div class="marquee" aria-hidden="true">
+  <div class="marquee__track">
+    <span>капучино <svg><use href="#paw"/></svg> собаки в зале <svg><use href="#paw"/></svg> раф <svg><use href="#paw"/></svg> можно со своим питомцем <svg><use href="#paw"/></svg> латте <svg><use href="#paw"/></svg> уютно <svg><use href="#paw"/></svg> кофе с собой <svg><use href="#paw"/></svg></span>
+    <span>капучино <svg><use href="#paw"/></svg> собаки в зале <svg><use href="#paw"/></svg> раф <svg><use href="#paw"/></svg> можно со своим питомцем <svg><use href="#paw"/></svg> латте <svg><use href="#paw"/></svg> уютно <svg><use href="#paw"/></svg> кофе с собой <svg><use href="#paw"/></svg></span>
+  </div>
+</div></div>

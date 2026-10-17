@@ -1,0 +1,43 @@
+---
+import type { MenuItem } from '../../lib/types';
+import { rich, rub } from '../../lib/format';
+interface Props { menu: MenuItem[] }
+const { menu } = Astro.props;
+---
+<section class="sec menu" id="menu">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><span class="num rv">02 — меню</span>
+      <h2 class="rv rv-d1">Кофе и <em>не только</em></h2></div>
+      <p class="rv rv-d2">Классика, которую любят все, и наш авторский напиток. Нажмите «+», чтобы собрать заказ с собой.</p>
+    </div>
+    <div class="menu__grid">
+      <div class="menu__photo rv" id="menuPhoto">
+        <img class="on" data-cat="all" src="/img/latte-pour.jpg" alt="Бариста рисует латте-арт" loading="lazy">
+        <img data-cat="black" src="/img/cup-wood.jpg" alt="Чашка кофе на деревянном столе" loading="lazy">
+        <img data-cat="milk" src="/img/latte-glass.jpg" alt="Латте в стеклянной чашке" loading="lazy">
+        <img data-cat="other" src="/img/menu-board.jpg" alt="Кофемашина и меню на доске" loading="lazy">
+        <img data-cat="item" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="" loading="lazy">
+        <span class="hand">сварим с любовью</span>
+      </div>
+      <div class="rv rv-d1">
+        <div class="tabs" role="tablist" aria-label="Категории меню">
+          <button class="tab" role="tab" aria-selected="true" data-f="all">Всё</button>
+          <button class="tab" role="tab" aria-selected="false" data-f="black">Чёрный кофе</button>
+          <button class="tab" role="tab" aria-selected="false" data-f="milk">С молоком</button>
+          <button class="tab" role="tab" aria-selected="false" data-f="other">Не кофе</button>
+        </div>
+        <ul class="mlist" id="mlist">
+          {menu.map(m => (
+            <li class="mrow" data-c={m.category} data-id={m.id} data-name={m.name} data-price={m.price_kop} data-photo={m.photo || undefined}>
+              <div><h4>{m.name}{m.signature && <> <span class="tag">фирменный</span></>}</h4>{m.description && <p set:html={rich(m.description)} />}</div>
+              <span class="price">{rub(m.price_kop)}</span>
+              <button class="add" aria-label={'Добавить: ' + m.name.toLowerCase()}>+</button>
+            </li>
+          ))}
+        </ul>
+        <p class="note"><svg><use href="#info"/></svg>Цены примерные — финальные уточним перед открытием.</p>
+      </div>
+    </div>
+  </div>
+</section>

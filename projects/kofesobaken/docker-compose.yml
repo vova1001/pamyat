@@ -1,0 +1,70 @@
+# КофеСобакен: всё в Docker. Запуск: docker compose up --build  →  http://localhost:8000 (кабинет — /admin)
+name: kofesobaken
+
+x-registry: &registry
+  REGISTRY: ${REGISTRY:-mirror.gcr.io/library}
+
+services:
+  db:
+    image: ${REGISTRY:-mirror.gcr.io/library}/postgres:16-alpine
+    environment:
+      POSTGRES_DB: kofesobaken
+      POSTGRES_USER: kofesobaken
+      # Только для локального запуска; на сервере задаётся в .env.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-only}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kofesobaken -d kofesobaken"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      args: *registry
+    environment:
+      DATABASE_URL: postgres://kofesobaken:${POSTGRES_PASSWORD:-local-only}@db:5432/kofesobaken?sslmode=disable
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8000}
+      PAYMENT_WEBHOOK_URL: http://127.0.0.1:8080/api/payments/webhook
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-test}
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-vovaoleshko05@mail.ru}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      SEED_DEMO: ${SEED_DEMO:-true}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args: *registry
+    environment:
+      BACKEND_URL: http://backend:8080
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    image: ${REGISTRY:-mirror.gcr.io/library}/nginx:alpine
+    ports:
+      - "${WEB_PORT:-8000}:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  uploads:

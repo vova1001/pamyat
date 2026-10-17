@@ -1,0 +1,27 @@
+---
+import type { Content } from '../../lib/types';
+interface Props { content: Content }
+const { content: c } = Astro.props;
+const delays = ['', ' rv-d1', ' rv-d2', ' rv-d3'];
+const stock = c.dogs.some(d => !d.name);
+---
+<section class="sec dogs" id="dogs">
+  <div class="dogs__bgword" aria-hidden="true">гав</div>
+  <div class="wrap">
+    <div class="sec-head">
+      <div><span class="num rv">03 — наши собаки</span>
+      <h2 class="rv rv-d1">Знакомьтесь — <em>скоро</em></h2></div>
+      <p class="rv rv-d2">Здесь будут портреты собак кофейни: имена, характеры и любимые места в зале. Пока — фото для примера.</p>
+    </div>
+  </div>
+  <div class="dogs__row" id="dogsRow">
+    {c.dogs.map((d, i) => (
+      <article class={'dog rv' + delays[i % 4]}><span class="dog__bubble">гав!</span>
+        <div class="dog__img"><img src={d.photo || '/img/dog-green.jpg'} alt={d.name ? d.name + (d.about ? ', ' + d.about : '') : 'Фото для примера: собака'} loading="lazy"></div>
+        {d.name ? <p class="hand">{d.name}</p> : <p class="hand">скоро здесь будут наши</p>}
+        <p class="dog__meta">{d.name ? d.about : <span class="todo">[имя, порода, характер]</span>}</p>
+      </article>
+    ))}
+  </div>
+  {stock && <div class="wrap"><p class="disclaimer"><svg width="16" height="16" fill="currentColor"><use href="#info"/></svg>Фото с фотостока — не собаки кофейни. Заменим на настоящие.</p></div>}
+</section>

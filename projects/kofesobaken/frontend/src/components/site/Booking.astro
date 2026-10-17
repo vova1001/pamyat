@@ -1,0 +1,41 @@
+---
+import { rub } from '../../lib/format';
+interface Props { prepayKop: number }
+const { prepayKop } = Astro.props;
+---
+<section class="sec" id="booking">
+  <div class="wrap book__grid">
+    <div class="book__aside">
+      <div class="sec-head" style="margin-bottom:0">
+        <div><span class="num rv">05 — бронь столика</span>
+        <h2 class="rv rv-d1">Займём вам <em>место</em> у&nbsp;собак</h2></div>
+      </div>
+      <p class="rv rv-d2" style="color:var(--soft);font-size:17px">Оставьте заявку и внесите предоплату {rub(prepayKop)} — она засчитается в счёт. Перезвоним и подтвердим бронь. Отметьте, если придёте с собакой: подготовим место.</p>
+      <div class="book__photo curtain rv"><img src="/img/dog-in-cafe.jpg" alt="Собака в зале кофейни" loading="lazy"><span class="hand">ждём!</span></div>
+    </div>
+    <div class="card rv rv-d1" id="bookCard">
+      <form class="form" id="bookForm" novalidate>
+        <label class="fld"><span>Ваше имя</span><input class="inp" name="name" autocomplete="given-name" placeholder="Анна" maxlength="60" required></label>
+        <label class="fld"><span>Телефон</span><input class="inp" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 (900) 000-00-00" required></label>
+        <div class="two">
+          <label class="fld"><span>Дата</span><input class="inp" name="date" type="date" required></label>
+          <label class="fld"><span>Время</span><input class="inp" name="time" type="time" value="12:00" min="09:00" max="20:30" step="900" required></label>
+        </div>
+        <div class="two">
+          <div class="fld"><span>Гостей</span><div class="stepper" id="guests"><button type="button" aria-label="Меньше гостей" data-d="-1">−</button><output>2</output><button type="button" aria-label="Больше гостей" data-d="1">+</button></div></div>
+          <div class="fld"><span>С собакой?</span>
+            <div class="seg"><input type="radio" name="dog" id="dogY" value="yes"><label for="dogY"><svg><use href="#paw"/></svg>Да</label><input type="radio" name="dog" id="dogN" value="no" checked><label for="dogN">Нет</label></div>
+          </div>
+        </div>
+        <label class="consent"><input type="checkbox" name="consent" required checked><span>Согласен на обработку персональных данных <span class="todo">[ссылка на политику]</span></span></label>
+        <button class="btn btn--main" type="submit">Забронировать · {rub(prepayKop)}<svg><use href="#arrow"/></svg></button>
+      </form>
+      <div class="success" aria-live="polite">
+        <svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#B7C4A2"/><use href="#paw" x="18" y="18" width="36" height="36" fill="#2A1A12"/></svg>
+        <h3>Бронь оплачена!</h3>
+        <p style="color:var(--soft)">Предоплата {rub(prepayKop)} засчитается в счёт.<br>Перезвоним, чтобы подтвердить бронь.</p>
+        <button class="btn btn--ghost" type="button" id="bookAgain">Новая заявка</button>
+      </div>
+    </div>
+  </div>
+</section>

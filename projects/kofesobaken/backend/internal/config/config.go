@@ -2,6 +2,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"os"
 	"strings"
@@ -53,7 +55,10 @@ func Load() (Config, error) {
 		return c, errors.New("DATABASE_URL не задан")
 	}
 	if c.WebhookSecret == "" {
-		return c, errors.New("PAYMENT_WEBHOOK_SECRET не задан")
+		// Для тестовой заглушки секрет нужен только внутри сервера — создаём случайный.
+		b := make([]byte, 32)
+		_, _ = rand.Read(b)
+		c.WebhookSecret = hex.EncodeToString(b)
 	}
 	if c.PaymentProvider != "test" {
 		return c, errors.New("PAYMENT_PROVIDER: пока доступна только тестовая заглушка (test)")

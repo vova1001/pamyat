@@ -1,0 +1,58 @@
+---
+// Страница тестовой оплаты. Это заглушка платёжной системы: настоящая оплата будет на странице
+// самой системы (ЮKassa и т. п.) — сайт данных карт не принимает.
+import '../../styles/site.css';
+import Sprite from '../../components/site/Sprite.astro';
+import { getPayment } from '../../lib/server';
+import { rub } from '../../lib/format';
+
+const p = await getPayment(Astro.params.id || '');
+if (!p) return Astro.redirect('/');
+const back = { booking: '#booking', order: '#order', signup: '#events' }[p.kind];
+if (p.status !== 'pending') return Astro.redirect(`/?payment=${p.id}${back}`);
+---
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Оплата — КофеСобакен</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  .pay{min-height:100vh;display:grid;place-items:center;padding:24px var(--pad)}
+  .pay .card{width:100%;max-width:460px;display:grid;gap:18px}
+  .pay__test{background:var(--butter);border-radius:999px;padding:6px 14px;font-weight:800;font-size:13px;justify-self:start}
+  .pay__sum{font-family:var(--f-head);font-weight:800;font-size:44px;letter-spacing:-.04em;line-height:1}
+  .pay p{color:var(--soft)}
+  .pay .btn{width:100%}
+</style>
+</head>
+<body>
+<Sprite />
+<main class="pay">
+  <div class="card" data-id={p.id} data-back={back}>
+    <a class="logo" href="/"><svg><use href="#logo"/></svg>КофеСобакен</a>
+    <span class="pay__test">Тестовая оплата — деньги не списываются</span>
+    <div><p>{p.description}</p><div class="pay__sum" id="paySum">{rub(p.amount_kop)}</div></div>
+    <button class="btn btn--main" type="button" id="payOk">Оплатить {rub(p.amount_kop)}<svg><use href="#arrow"/></svg></button>
+    <button class="btn btn--ghost" type="button" id="payNo">Отказаться</button>
+    <p style="font-size:13px">Здесь будет страница платёжной системы. Сейчас кнопка имитирует её уведомление сайту об оплате.</p>
+  </div>
+</main>
+<script>
+  import { api } from '../../lib/api';
+  const card = document.querySelector<HTMLElement>('.card')!;
+  const id = card.dataset.id!, back = card.dataset.back!;
+  const go = async (action: 'pay' | 'cancel') => {
+    document.querySelectorAll('button').forEach(b => (b.disabled = true));
+    try { await api(`/payments/test/${id}/${action}`, { method: 'POST' }); } catch { /* статус проверит сайт */ }
+    location.href = `/?payment=${id}${back}`;
+  };
+  document.getElementById('payOk')!.addEventListener('click', () => go('pay'));
+  document.getElementById('payNo')!.addEventListener('click', () => go('cancel'));
+</script>
+</body>
+</html>
