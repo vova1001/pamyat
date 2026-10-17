@@ -53,12 +53,12 @@ function setDrop(drop: HTMLElement, src: string) {
 // ================= БРОНИ =================
 let BK: Booking[] = [];
 let bf = 'all';
-const BST: Record<string, [string, string]> = { new: ['st--new', 'новая'], confirmed: ['st--ok', 'подтверждена'], cancelled: ['st--no', 'отменена'] };
+const BST: Record<string, [string, string]> = { new: ['st--new', 'новая'], confirmed: ['st--ok', 'подтверждена'], cancelled: ['st--no', 'отменена'], awaiting_payment: ['st--no', 'ждёт оплаты'] };
 function renderBk() {
   const t = todayISO(), wk = addDays(t, 7);
   const isToday = (b: Booking) => b.date === t, inWeek = (b: Booking) => b.date >= t && b.date <= wk;
   const list = BK.filter(b => bf === 'all' || (bf === 'new' && b.status === 'new') || (bf === 'today' && isToday(b)) || (bf === 'week' && inWeek(b)) || (bf === 'no' && b.status === 'cancelled'));
-  const live = BK.filter(b => b.status !== 'cancelled');
+  const live = BK.filter(b => b.status !== 'cancelled' && b.status !== 'awaiting_payment');
   const n = BK.filter(b => b.status === 'new').length;
   $$('.js-new-n').forEach(e => (e.textContent = String(n))); $$('.js-new').forEach(e => { e.textContent = String(n); e.hidden = !n; });
   $('#stNewL').textContent = `${plural(n, 'новая', 'новые', 'новых')}, ${plural(n, 'ждёт', 'ждут', 'ждут')} ответа`;
@@ -69,7 +69,7 @@ function renderBk() {
       <article class="bk ${b.status === 'new' ? 'bk--new' : ''} ${b.status === 'cancelled' ? 'bk--no' : ''}">
         <div class="bk__who"><b>${esc(b.name)}</b><a href="${tel(b.phone)}">${esc(b.phone)}</a><span class="bk__ago">${ago(b.created_at)}</span></div>
         <div class="bk__when"><b>${b.time}</b><span>${whenLabel(b.date)}</span></div>
-        <div class="bk__info"><span class="pill"><svg><use href="#users"/></svg>${b.guests} ${plural(b.guests, 'гость', 'гостя', 'гостей')}</span>${b.with_dog ? '<span class="pill"><svg><use href="#paw"/></svg>с собакой</span>' : ''}<em>${b.status === 'cancelled' ? 'Предоплата возвращена' : `Предоплата ${rub(b.prepay_kop)} оплачена — засчитать в счёт`}</em></div>
+        <div class="bk__info"><span class="pill"><svg><use href="#users"/></svg>${b.guests} ${plural(b.guests, 'гость', 'гостя', 'гостей')}</span>${b.with_dog ? '<span class="pill"><svg><use href="#paw"/></svg>с собакой</span>' : ''}<em>${b.status === 'cancelled' ? 'Предоплата возвращена' : b.status === 'awaiting_payment' ? `Предоплата ${rub(b.prepay_kop)} ещё не поступила — гость на странице оплаты` : `Предоплата ${rub(b.prepay_kop)} оплачена — засчитать в счёт`}</em></div>
         <div class="bk__end"><span class="st ${BST[b.status][0]} bk__st">${BST[b.status][1]}</span>
           ${b.status === 'new' ? `<div class="bk__acts"><button class="btn btn--main btn--sm" data-ok="${b.id}">Подтвердить</button><button class="btn btn--soft btn--sm" data-no="${b.id}">Отменить</button><a class="ibtn" style="background:var(--cream)" href="${tel(b.phone)}" aria-label="Позвонить"><svg><use href="#phone"/></svg></a></div>`
             : b.status === 'confirmed' ? `<div class="bk__acts"><button class="btn btn--soft btn--sm" data-no="${b.id}">Отменить</button><a class="ibtn" style="background:var(--cream)" href="${tel(b.phone)}" aria-label="Позвонить"><svg><use href="#phone"/></svg></a></div>` : ''}
@@ -93,13 +93,13 @@ $$('[data-bf]').forEach(c => c.addEventListener('click', () => { $$('[data-bf]')
 // ================= ЗАКАЗЫ =================
 let OR: Order[] = [];
 let of = 'all';
-const OST: Record<string, [string, string]> = { new: ['st--new', 'новый'], done: ['st--ok', 'готов'], cancelled: ['st--no', 'отменён'] };
+const OST: Record<string, [string, string]> = { new: ['st--new', 'новый'], done: ['st--ok', 'готов'], cancelled: ['st--no', 'отменён'], awaiting_payment: ['st--no', 'ждёт оплаты'] };
 function renderOr() {
   const list = OR.filter(o => of === 'all' || o.status === of);
   const n = OR.filter(o => o.status === 'new').length;
   $$('.js-new-on').forEach(e => (e.textContent = String(n))); $$('.js-new-o').forEach(e => { e.textContent = String(n); e.hidden = !n; });
   $('#orNewL').textContent = `${plural(n, 'новый', 'новых', 'новых')}, ${plural(n, 'ждёт', 'ждут', 'ждут')}`;
-  const today = OR.filter(o => isoLocal(new Date(o.created_at)) === todayISO() && o.status !== 'cancelled');
+  const today = OR.filter(o => isoLocal(new Date(o.created_at)) === todayISO() && o.status !== 'cancelled' && o.status !== 'awaiting_payment');
   $('#orToday').textContent = String(today.length);
   $('#orSum').textContent = rub(today.reduce((s, o) => s + o.total_kop, 0));
   $('#orDeliv').textContent = String(today.filter(o => o.mode === 'delivery').length);
@@ -107,7 +107,7 @@ function renderOr() {
       <article class="bk ${o.status === 'new' ? 'bk--new' : ''} ${o.status === 'cancelled' ? 'bk--no' : ''}" data-order="${o.id}">
         <div class="bk__who"><b>Заказ №${o.id}</b><a href="${tel(o.phone)}">${esc(o.phone)}</a><span class="bk__ago">${ago(o.created_at, false)}</span></div>
         <div class="bk__when"><b>${rub(o.total_kop)}</b><span>${o.mode === 'delivery' ? 'доставка' : 'заберёт сам'}</span></div>
-        <div class="bk__info">${o.items.map(i => `<span class="pill">${esc(i.name)} × ${i.qty}</span>`).join('')}${o.mode === 'delivery' ? `<em>${esc(o.address)}</em>` : ''}</div>
+        <div class="bk__info">${o.items.map(i => `<span class="pill">${esc(i.name)} × ${i.qty}</span>`).join('')}${o.mode === 'delivery' ? `<em>${esc(o.address)}</em>` : ''}${o.status === 'awaiting_payment' ? '<em>Оплата ещё не поступила — не готовить</em>' : ''}</div>
         <div class="bk__end"><span class="st ${OST[o.status][0]} bk__st">${OST[o.status][1]}</span>
           ${o.status === 'new' ? `<div class="bk__acts"><button class="btn btn--main btn--sm" data-done="${o.id}">Готово</button><button class="btn btn--soft btn--sm" data-cancel="${o.id}">Отменить</button><a class="ibtn" style="background:var(--cream)" href="${tel(o.phone)}" aria-label="Позвонить"><svg><use href="#phone"/></svg></a></div>` : ''}
         </div>

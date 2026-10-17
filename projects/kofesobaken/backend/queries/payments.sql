@@ -17,3 +17,10 @@ SELECT * FROM payments WHERE kind = $1 AND target_id = $2 ORDER BY created_at DE
 
 -- name: SetPaymentStatus :exec
 UPDATE payments SET status = $2, updated_at = now() WHERE id = $1;
+
+-- name: ListPendingPayments :many
+-- Платежи, ждущие оплаты, созданные в промежутке [after, before) — для фоновой проверки статуса.
+SELECT * FROM payments
+WHERE status = 'pending' AND created_at >= @after AND created_at < @before
+ORDER BY created_at
+LIMIT 200;

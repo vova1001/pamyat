@@ -91,7 +91,11 @@ func run() error {
 		return nil
 	}
 
-	go svc.RunRetention(ctx) // данные гостей храним 1 год (политика конфиденциальности)
+	go svc.RunRetention(ctx)    // данные гостей храним 1 год (политика конфиденциальности)
+	go svc.RunPaymentSweep(ctx) // статус платежей, если уведомление платёжной системы не пришло
+	if cfg.KeepAwake {
+		go keepAwake(ctx, cfg.PublicURL+"/healthz")
+	}
 
 	var photos media.Store = media.Disk{Dir: cfg.UploadDir}
 	if cfg.MediaStore == "postgres" {
@@ -117,6 +121,32 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+// keepAwake заходит на публичный адрес сайта раз в 10 минут: бесплатный Render усыпляет сервис
+// через 15 минут без посетителей, а спящий сервер не проверяет платежи.
+func keepAwake(ctx context.Context, url string) {
+	cl := &http.Client{Timeout: 30 * time.Second}
+	t := time.NewTicker(10 * time.Minute)
+	defer t.Stop()
+	slog.Info("сайт не засыпает: заход на свой адрес раз в 10 минут", "url", url)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			slog.Warn("пинг сайта", "err", err)
+			return
+		}
+		if resp, err := cl.Do(req); err != nil {
+			slog.Warn("пинг сайта", "err", err)
+		} else {
+			resp.Body.Close()
+		}
+	}
 }
 
 // logSetupLink — ссылка первого входа: по ней администратор сам задаёт пароль. В базе — только хэш кода.

@@ -749,7 +749,7 @@ components:
         guests: { type: integer }
         with_dog: { type: boolean }
         prepay_kop: { type: integer, format: int64 }
-        status: { type: string, enum: [new, confirmed, cancelled] }
+        status: { type: string, enum: [awaiting_payment, new, confirmed, cancelled], description: 'awaiting_payment — оплата ещё не поступила (в кабинете с пометкой «ждёт оплаты»)' }
         created_at: { type: string, format: date-time }
     Order:
       type: object
@@ -760,7 +760,7 @@ components:
         phone: { type: string }
         address: { type: string }
         total_kop: { type: integer, format: int64 }
-        status: { type: string, enum: [new, done, cancelled] }
+        status: { type: string, enum: [awaiting_payment, new, done, cancelled], description: 'awaiting_payment — оплата ещё не поступила (в кабинете с пометкой «ждёт оплаты»)' }
         created_at: { type: string, format: date-time }
         items:
           type: array

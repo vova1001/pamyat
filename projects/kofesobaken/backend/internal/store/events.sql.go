@@ -12,6 +12,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const closeUnpaidSignup = `-- name: CloseUnpaidSignup :exec
+UPDATE event_signups SET status = 'cancelled', hold_until = NULL WHERE id = $1 AND status = 'awaiting_payment'
+`
+
+func (q *Queries) CloseUnpaidSignup(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, closeUnpaidSignup, id)
+	return err
+}
+
 const confirmSignup = `-- name: ConfirmSignup :one
 UPDATE event_signups SET status = 'confirmed', paid_at = now(), hold_until = NULL
 WHERE id = $1 AND status = 'awaiting_payment' RETURNING id, event_id, name, via, contact, people, with_dog, amount_kop, status, hold_until, created_at, paid_at

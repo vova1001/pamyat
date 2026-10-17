@@ -53,3 +53,6 @@ WHERE id = $1 AND status = 'awaiting_payment' RETURNING *;
 
 -- name: ListSignups :many
 SELECT * FROM event_signups WHERE event_id = $1 AND status = 'confirmed' ORDER BY created_at;
+
+-- name: CloseUnpaidSignup :exec
+UPDATE event_signups SET status = 'cancelled', hold_until = NULL WHERE id = $1 AND status = 'awaiting_payment';

@@ -2032,8 +2032,11 @@ export interface components {
             with_dog: boolean;
             /** Format: int64 */
             prepay_kop: number;
-            /** @enum {string} */
-            status: "new" | "confirmed" | "cancelled";
+            /**
+             * @description awaiting_payment — оплата ещё не поступила (в кабинете с пометкой «ждёт оплаты»)
+             * @enum {string}
+             */
+            status: "awaiting_payment" | "new" | "confirmed" | "cancelled";
             /** Format: date-time */
             created_at: string;
         };
@@ -2046,8 +2049,11 @@ export interface components {
             address: string;
             /** Format: int64 */
             total_kop: number;
-            /** @enum {string} */
-            status: "new" | "done" | "cancelled";
+            /**
+             * @description awaiting_payment — оплата ещё не поступила (в кабинете с пометкой «ждёт оплаты»)
+             * @enum {string}
+             */
+            status: "awaiting_payment" | "new" | "done" | "cancelled";
             /** Format: date-time */
             created_at: string;
             items: {

@@ -34,6 +34,15 @@ func (q *Queries) AddOrderItem(ctx context.Context, arg AddOrderItemParams) erro
 	return err
 }
 
+const closeUnpaidOrder = `-- name: CloseUnpaidOrder :exec
+UPDATE orders SET status = 'cancelled' WHERE id = $1 AND status = 'awaiting_payment'
+`
+
+func (q *Queries) CloseUnpaidOrder(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, closeUnpaidOrder, id)
+	return err
+}
+
 const createOrder = `-- name: CreateOrder :one
 INSERT INTO orders (mode, phone, address, total_kop, delivery_kop, status)
 VALUES ($1, $2, $3, $4, $5, 'awaiting_payment')
@@ -124,7 +133,7 @@ func (q *Queries) ListOrderItems(ctx context.Context, ids []int64) ([]OrderItem,
 }
 
 const listOrders = `-- name: ListOrders :many
-SELECT id, mode, phone, address, total_kop, delivery_kop, status, created_at, paid_at FROM orders WHERE status <> 'awaiting_payment' ORDER BY created_at DESC LIMIT 200
+SELECT id, mode, phone, address, total_kop, delivery_kop, status, created_at, paid_at FROM orders WHERE NOT (status = 'cancelled' AND paid_at IS NULL) ORDER BY created_at DESC LIMIT 200
 `
 
 func (q *Queries) ListOrders(ctx context.Context) ([]Order, error) {

@@ -391,7 +391,10 @@ func (s *Service) HandlePaymentEvent(ctx context.Context, e payments.Event) erro
 			return &ConflictError{Msg: "платёж не совпадает"}
 		}
 		if e.Type == payments.EventCanceled {
-			return q.SetPaymentStatus(ctx, store.SetPaymentStatusParams{ID: p.ID, Status: "canceled"})
+			if err := q.SetPaymentStatus(ctx, store.SetPaymentStatusParams{ID: p.ID, Status: "canceled"}); err != nil {
+				return err
+			}
+			return closeUnpaid(ctx, q, p) // оплаты не будет — бронь / заказ / запись закрываются
 		}
 		if e.AmountKop != p.AmountKop {
 			return &ConflictError{Msg: "сумма платежа не совпадает"}

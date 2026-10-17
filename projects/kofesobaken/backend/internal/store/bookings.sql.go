@@ -12,6 +12,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const closeUnpaidBooking = `-- name: CloseUnpaidBooking :exec
+UPDATE bookings SET status = 'cancelled' WHERE id = $1 AND status = 'awaiting_payment'
+`
+
+func (q *Queries) CloseUnpaidBooking(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, closeUnpaidBooking, id)
+	return err
+}
+
 const createBooking = `-- name: CreateBooking :one
 INSERT INTO bookings (name, phone, day, at, guests, with_dog, prepay_kop, status)
 VALUES ($1, $2, $3, $4, $5, $6, $7, 'awaiting_payment')
@@ -79,7 +88,7 @@ func (q *Queries) GetBooking(ctx context.Context, id int64) (Booking, error) {
 }
 
 const listBookings = `-- name: ListBookings :many
-SELECT id, name, phone, day, at, guests, with_dog, prepay_kop, status, created_at, paid_at FROM bookings WHERE status <> 'awaiting_payment' ORDER BY created_at DESC LIMIT 300
+SELECT id, name, phone, day, at, guests, with_dog, prepay_kop, status, created_at, paid_at FROM bookings WHERE NOT (status = 'cancelled' AND paid_at IS NULL) ORDER BY created_at DESC LIMIT 300
 `
 
 func (q *Queries) ListBookings(ctx context.Context) ([]Booking, error) {

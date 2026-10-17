@@ -10,7 +10,7 @@ INSERT INTO order_items (order_id, menu_item_id, name, price_kop, qty) VALUES ($
 SELECT * FROM orders WHERE id = $1;
 
 -- name: ListOrders :many
-SELECT * FROM orders WHERE status <> 'awaiting_payment' ORDER BY created_at DESC LIMIT 200;
+SELECT * FROM orders WHERE NOT (status = 'cancelled' AND paid_at IS NULL) ORDER BY created_at DESC LIMIT 200;
 
 -- name: ListOrderItems :many
 SELECT * FROM order_items WHERE order_id = ANY(@ids::bigint[]) ORDER BY id;
@@ -20,3 +20,6 @@ UPDATE orders SET status = 'new', paid_at = now() WHERE id = $1 AND status = 'aw
 
 -- name: SetOrderStatus :one
 UPDATE orders SET status = $2 WHERE id = $1 AND status = 'new' RETURNING *;
+
+-- name: CloseUnpaidOrder :exec
+UPDATE orders SET status = 'cancelled' WHERE id = $1 AND status = 'awaiting_payment';

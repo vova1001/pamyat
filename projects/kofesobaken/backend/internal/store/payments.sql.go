@@ -7,6 +7,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -118,6 +119,50 @@ func (q *Queries) GetPaymentForUpdate(ctx context.Context, id uuid.UUID) (Paymen
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listPendingPayments = `-- name: ListPendingPayments :many
+SELECT id, kind, target_id, amount_kop, description, provider, provider_payment_id, status, created_at, updated_at FROM payments
+WHERE status = 'pending' AND created_at >= $1 AND created_at < $2
+ORDER BY created_at
+LIMIT 200
+`
+
+type ListPendingPaymentsParams struct {
+	After  time.Time `json:"after"`
+	Before time.Time `json:"before"`
+}
+
+// Платежи, ждущие оплаты, созданные в промежутке [after, before) — для фоновой проверки статуса.
+func (q *Queries) ListPendingPayments(ctx context.Context, arg ListPendingPaymentsParams) ([]Payment, error) {
+	rows, err := q.db.Query(ctx, listPendingPayments, arg.After, arg.Before)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Payment{}
+	for rows.Next() {
+		var i Payment
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.TargetID,
+			&i.AmountKop,
+			&i.Description,
+			&i.Provider,
+			&i.ProviderPaymentID,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setPaymentProviderID = `-- name: SetPaymentProviderID :exec

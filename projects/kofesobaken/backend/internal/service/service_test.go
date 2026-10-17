@@ -490,9 +490,9 @@ func TestOrderFlow(t *testing.T) {
 	if c.AmountKop != 3*400_00+300_00 || c.Status != "awaiting_payment" || !strings.HasPrefix(c.ConfirmationURL, "http://site.test/pay/") {
 		t.Fatalf("оформление: %+v", c)
 	}
-	// До оплаты в кабинете заказа нет.
-	if list, _ := e.svc.ListOrders(ctx); len(list) != 0 {
-		t.Fatal("неоплаченный заказ не показываем")
+	// До оплаты заказ в кабинете с пометкой «ждёт оплаты».
+	if list, _ := e.svc.ListOrders(ctx); len(list) != 1 || list[0].Status != "awaiting_payment" {
+		t.Fatalf("неоплаченный заказ — «ждёт оплаты»: %+v", list)
 	}
 	st, err := e.svc.TestPay(ctx, c.PaymentID)
 	if err != nil || st.Status != "succeeded" {
@@ -570,7 +570,7 @@ func TestPaymentEventChecks(t *testing.T) {
 		t.Fatal("нет платежа — не найдено")
 	}
 	if list, _ := e.svc.ListOrders(ctx); len(list) != 0 {
-		t.Fatal("неоплаченный заказ не в кабинете")
+		t.Fatal("заказ без оплаты после отказа закрыт и в кабинете не показывается")
 	}
 }
 
@@ -607,8 +607,8 @@ func TestBookingFlow(t *testing.T) {
 	if c.AmountKop != service.BookingPrepayKop {
 		t.Fatalf("предоплата 500 ₽, а не %d", c.AmountKop)
 	}
-	if list, _ := e.svc.ListBookings(ctx); len(list) != 0 {
-		t.Fatal("неоплаченная бронь не в кабинете")
+	if list, _ := e.svc.ListBookings(ctx); len(list) != 1 || list[0].Status != "awaiting_payment" {
+		t.Fatalf("неоплаченная бронь — «ждёт оплаты»: %+v", list)
 	}
 	if _, err := e.svc.TestPay(ctx, c.PaymentID); err != nil {
 		t.Fatal(err)

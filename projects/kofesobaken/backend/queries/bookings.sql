@@ -7,10 +7,13 @@ RETURNING *;
 SELECT * FROM bookings WHERE id = $1;
 
 -- name: ListBookings :many
-SELECT * FROM bookings WHERE status <> 'awaiting_payment' ORDER BY created_at DESC LIMIT 300;
+SELECT * FROM bookings WHERE NOT (status = 'cancelled' AND paid_at IS NULL) ORDER BY created_at DESC LIMIT 300;
 
 -- name: MarkBookingPaid :one
 UPDATE bookings SET status = 'new', paid_at = now() WHERE id = $1 AND status = 'awaiting_payment' RETURNING *;
 
 -- name: SetBookingStatus :one
 UPDATE bookings SET status = $2 WHERE id = $1 AND status = ANY(@from_status::text[]) RETURNING *;
+
+-- name: CloseUnpaidBooking :exec
+UPDATE bookings SET status = 'cancelled' WHERE id = $1 AND status = 'awaiting_payment';

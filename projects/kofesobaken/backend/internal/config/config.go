@@ -36,6 +36,7 @@ type Config struct {
 	YooKassaSecret   string // ЮKassa: секретный ключ (test_… — тестовый магазин, live_… — боевой)
 	YooKassaReceipt  bool   // чек 54-ФЗ через ЮKassa (для ИП); самозанятый — false, чек в «Мой налог»
 	YooKassaVATCode  int    // ставка НДС в чеке ЮKassa: 1 — без НДС
+	KeepAwake        bool   // сервер сам заходит на свой адрес раз в 10 минут (бесплатный Render засыпает через 15)
 	Warnings         []string
 }
 
@@ -69,6 +70,8 @@ func Load() (Config, error) {
 		YooKassaShopID:   get("YOOKASSA_SHOP_ID", ""),
 		YooKassaSecret:   strings.TrimSpace(os.Getenv("YOOKASSA_SECRET_KEY")),
 		YooKassaReceipt:  get("YOOKASSA_RECEIPT", "false") == "true",
+		// На Render (переменная RENDER=true) включено по умолчанию; KEEP_AWAKE=false — выключить.
+		KeepAwake: get("KEEP_AWAKE", get("RENDER", "false")) == "true",
 	}
 	vat, err := strconv.Atoi(get("YOOKASSA_VAT_CODE", "1"))
 	if err != nil || vat < 1 || vat > 12 {
