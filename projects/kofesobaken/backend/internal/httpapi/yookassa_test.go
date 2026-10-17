@@ -210,8 +210,7 @@ func TestYooKassaEndToEnd(t *testing.T) {
 	}
 
 	// заказ: гость вернулся раньше уведомления — статус проверяется по API
-	site := map[string]any{}
-	_, site, _ = c.do("GET", "/api/site", nil)
+	_, site, _ := c.do("GET", "/api/site", nil)
 	first := site["menu"].([]any)[0].(map[string]any)["id"]
 	st, m, _ = c.do("POST", "/api/orders", map[string]any{"mode": "pickup", "phone": "9001112233", "items": []any{map[string]any{"menu_item_id": first, "qty": 1}}})
 	if st != 201 {
