@@ -17,7 +17,7 @@
 - Ветка — `main`; `autoDeploy: true` — после каждого слияния в `main` Render пересобирает сайт сам.
 
 Ссылка для заказчика (кнопка):
-`https://render.com/deploy?repo=https://github.com/[УТОЧНИТЬ: организация]/kofesobaken`
+`https://render.com/deploy?repo=https://github.com/PamyatS/kafesobaka`
 
 ## Что нажимает заказчик (у него уже есть аккаунт Neon с базой — задача 11)
 1. Открыть ссылку выше → войти в Render или зарегистрироваться (почта и пароль, картинка «я не робот», ссылка из письма).
