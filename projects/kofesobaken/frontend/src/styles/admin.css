@@ -382,3 +382,17 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
   .bk.q .q__ans,.bk.q .q__form{grid-column:3;margin-top:34px}
   .bk.q .q__again{grid-column:1;grid-row:2}
 }
+
+/* ---------- полосы прокрутки в стиле кабинета ---------- */
+html{scrollbar-color:var(--caramel) var(--cream)}
+*{scrollbar-width:thin;scrollbar-color:var(--caramel) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--caramel);border-radius:999px;border:3px solid var(--cream)}
+::-webkit-scrollbar-thumb:hover{background:var(--tomato)}
+::-webkit-scrollbar-corner{background:transparent}
+
+/* ---------- кнопки: текст не выходит за край ---------- */
+.btn{white-space:normal;text-align:center;line-height:1.15;padding-top:8px;padding-bottom:8px;max-width:100%;min-width:0}
+@media (max-width:380px){.btn{padding-left:16px;padding-right:16px;font-size:14px}}
+html{overflow-x:clip}

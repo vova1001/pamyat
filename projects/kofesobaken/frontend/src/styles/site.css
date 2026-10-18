@@ -109,7 +109,7 @@ section{position:relative}
 .sec-head{display:flex;flex-direction:column;gap:12px;margin-bottom:36px}
 .num{font-family:var(--f-head);font-weight:700;font-size:13px;letter-spacing:.12em;color:var(--tomato);display:flex;align-items:center;gap:10px}
 .num::after{content:"";width:40px;height:2px;background:currentColor}
-h2{font-family:var(--f-head);font-weight:800;font-size:clamp(32px,7.6vw,72px);line-height:1;letter-spacing:-.04em}
+h2{font-family:var(--f-head);font-weight:800;font-size:clamp(min(32px,8.2vw),7.6vw,72px);line-height:1;letter-spacing:-.04em}
 h2 em{font-style:normal;color:var(--tomato)}
 .sec-head p{color:var(--soft);max-width:46ch;font-size:17px}
 h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;letter-spacing:-.02em}
@@ -470,3 +470,22 @@ textarea.inp.ask__q{font:inherit;font-size:16px;font-weight:600;color:inherit;he
   body:has(.mbar.show) .ask-fab{bottom:28px}
 }
 #askModal.is-sent .ask__head p{display:none}
+
+/* ---------- полосы прокрутки в стиле сайта ---------- */
+html{scrollbar-color:var(--caramel) var(--cream)}
+*{scrollbar-width:thin;scrollbar-color:var(--caramel) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--caramel);border-radius:999px;border:3px solid var(--cream)}
+::-webkit-scrollbar-thumb:hover{background:var(--tomato)}
+::-webkit-scrollbar-corner{background:transparent}
+.modal__box::-webkit-scrollbar-thumb,.form textarea::-webkit-scrollbar-thumb{border-color:var(--milk)}
+
+/* ---------- кнопки: текст не выходит за край (узкие экраны, крупный шрифт iOS) ---------- */
+.btn{white-space:normal;text-align:center;line-height:1.15;padding-top:8px;padding-bottom:8px;max-width:100%;min-width:0}
+.mnav .btn{font-family:var(--f-text);font-size:17px;padding:8px 22px;align-items:center}
+@media (max-width:380px){.btn{padding-left:18px;padding-right:18px;font-size:15px}.mbar .btn{padding:6px 8px;font-size:13px}}
+.tabs{flex-wrap:wrap;overflow:visible}
+/* узкие телефоны (iPhone SE/mini, крупный шрифт): ничего не шире экрана */
+html{overflow-x:clip}
+.mnav a{font-size:clamp(22px,7.8vw,30px)}
