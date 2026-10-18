@@ -34,4 +34,4 @@
 - Куда: prod/crew/dev/tech-lead/MEMORY.md + prod/crew/dev/backend/MEMORY.md
 - Источник: агент
 - Подтверждения: КофеСобакен
-- Статус: ждёт
+- Статус: в проде (2026-10-18)
