@@ -81,7 +81,7 @@ func TestTextsMigration(t *testing.T) {
 	if menu[0].Name != "Лапа на льду" || menu[1].Description != "Свой текст" {
 		t.Fatalf("миграция меню: %+v", menu)
 	}
-	if err := goose.Down(db, "."); err != nil {
+	if err := goose.DownTo(db, ".", 3); err != nil { // откат 00005 (вопросы) и 00004 (тексты)
 		t.Fatal(err)
 	}
 	c, _ = svc.Content(ctx)
@@ -102,6 +102,8 @@ func TestPurgeOld(t *testing.T) {
 		  ('pickup', '+7', 100, 'done', now() - interval '400 days'), ('pickup', '+7', 100, 'new', now())`,
 		`INSERT INTO notifications (channel, kind, recipient, title, body, status, created_at) VALUES
 		  ('email', 'order', 'a@b.c', 't', 'b', 'sent', now() - interval '400 days')`,
+		`INSERT INTO questions (source, name, contact_kind, contact, body, created_at) VALUES
+		  ('site', 'Анна', 'email', 'a@b.cc', 'старый', now() - interval '400 days'), ('site', 'Олег', 'email', 'o@b.cc', 'новый', now())`,
 		`INSERT INTO payments (kind, target_id, amount_kop, description, provider, status, created_at) VALUES
 		  ('order', 1, 100, 'Заказ', 'test', 'succeeded', now() - interval '400 days')`,
 	} {
@@ -110,8 +112,8 @@ func TestPurgeOld(t *testing.T) {
 		}
 	}
 	n, err := e.svc.PurgeOld(ctx)
-	if err != nil || n != 3 {
-		t.Fatalf("ждали удалить 3 записи, удалено %d: %v", n, err)
+	if err != nil || n != 4 {
+		t.Fatalf("ждали удалить 4 записи, удалено %d: %v", n, err)
 	}
 	var left, pays int
 	_ = testPool.QueryRow(ctx, `SELECT (SELECT count(*) FROM bookings) + (SELECT count(*) FROM orders)`).Scan(&left)

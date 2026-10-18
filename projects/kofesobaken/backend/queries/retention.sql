@@ -12,3 +12,6 @@ DELETE FROM event_signups WHERE created_at < $1;
 
 -- name: DeleteOldNotifications :execrows
 DELETE FROM notifications WHERE created_at < $1;
+
+-- name: DeleteOldQuestions :execrows
+DELETE FROM questions WHERE created_at < $1;

@@ -1,7 +1,7 @@
 // Кабинет: поведение из согласованного эскиза admin.html, данные — настоящие, через API.
 import { api, ApiFail } from '../lib/api';
 import { dayLong, dayNum, monShort, plural, rub } from '../lib/format';
-import type { AdminEvent, Booking, Content, Me, MenuItem, Notification, Order, Settings, Signup, Staff } from '../lib/types';
+import type { AdminEvent, Booking, Content, Me, MenuItem, Notification, Order, Question, QuestionList, Settings, Signup, Staff } from '../lib/types';
 
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector(s) as T;
 const $$ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => [...r.querySelectorAll(s)] as T[];
@@ -126,6 +126,72 @@ $('#orList').addEventListener('click', async e => {
   } catch (err) { oops(err); }
 });
 $$('[data-of]').forEach(c => c.addEventListener('click', () => { $$('[data-of]').forEach(x => x.classList.toggle('on', x === c)); of = c.dataset.of!; renderOr(); }));
+
+// ================= ВОПРОСЫ =================
+let QS: Question[] = [];
+let qf = 'wait';
+const enc = encodeURIComponent;
+const nick = (c: string) => c.replace(/^@/, '');
+function qContact(q: Question) {
+  if (q.contact_kind === 'email') return `<a href="mailto:${esc(q.contact)}">${esc(q.contact)}</a>`;
+  if (q.contact) return `<a href="https://t.me/${enc(nick(q.contact))}" target="_blank" rel="noopener">${esc(q.contact)}</a>`;
+  return '';
+}
+const QVIA: Record<string, string> = { telegram: 'отправлен в Telegram', email: 'отправлен письмом', manual: 'ответили сами' };
+function qActions(q: Question) {
+  const main = q.can_send ? `<button class="btn btn--main btn--sm" data-send>Отправить ${q.source === 'telegram' ? 'в Telegram' : 'письмом'}</button>`
+    : q.contact_kind === 'email' ? '<button class="btn btn--main btn--sm" data-mailto>Ответить письмом</button>'
+    : q.contact ? '<button class="btn btn--main btn--sm" data-tgme>Написать в Telegram</button>' : '';
+  return `${main}<button class="btn btn--soft btn--sm" data-mark>Отвечено</button>`;
+}
+function renderQ() {
+  const wait = (q: Question) => !q.answered_at;
+  const n = QS.filter(wait).length;
+  $$('.js-new-qn').forEach(e => (e.textContent = String(n))); $$('.js-new-q').forEach(e => { e.textContent = String(n); e.hidden = !n; });
+  const list = QS.filter(q => qf === 'all' || (qf === 'wait') === wait(q));
+  $('#qList').innerHTML = list.length ? list.map(q => `
+      <article class="bk q ${wait(q) ? 'bk--new' : ''}" data-q="${q.id}">
+        <div class="bk__who"><b>${esc(q.name)}</b>${qContact(q)}<span class="bk__ago">${ago(q.created_at, false)} · ${q.source === 'telegram' ? 'из Telegram' : 'с сайта'}</span></div>
+        <span class="st ${wait(q) ? 'st--new' : 'st--ok'} bk__st">${wait(q) ? 'ждёт ответа' : 'отвечено'}</span>
+        <p class="q__body">${esc(q.body)}</p>
+        ${q.answered_at ? `<div class="q__ans"><small>Ответ · ${QVIA[q.answered_via] || ''}</small>${q.answer ? esc(q.answer) : '<i>без текста</i>'}</div>` : ''}
+        <div class="q__form"${q.answered_at ? ' hidden' : ''}>
+          <textarea class="inp" data-qa maxlength="3500" placeholder="${q.can_send ? 'Ваш ответ — уйдёт гостю' : 'Ваш ответ'}" aria-label="Ответ гостю"></textarea>
+          <div class="bk__acts">${qActions(q)}</div>
+        </div>
+        ${q.answered_at ? '<button class="btn btn--text q__again" type="button" data-again>Ответить ещё раз</button>' : ''}
+      </article>`).join('') : `<div class="empty"><b>${qf === 'wait' ? 'Все вопросы отвечены' : 'Пока пусто'}</b>Вопросы из формы на сайте и из Telegram-бота появятся здесь — и придут вам на почту и в Telegram.</div>`;
+}
+async function loadQ() { try { const r = await api<QuestionList>('/admin/questions'); QS = r.items; renderQ(); } catch (e) { oops(e); } }
+async function answerQ(id: number, answer: string, send: boolean, done: string) {
+  const q = await api<Question>(`/admin/questions/${id}/answer`, { body: { answer, send } });
+  QS = QS.map(x => (x.id === q.id ? q : x)); renderQ(); say(done);
+}
+$('#qList').addEventListener('click', async e => {
+  const t = e.target as HTMLElement, card = t.closest<HTMLElement>('[data-q]'), b = t.closest<HTMLButtonElement>('button');
+  if (!card || !b) return;
+  const q = QS.find(x => x.id === +card.dataset.q!); if (!q) return;
+  if (b.dataset.again !== undefined) { $('.q__form', card).hidden = false; b.hidden = true; $<HTMLTextAreaElement>('[data-qa]', card).focus(); return; }
+  const ta = $<HTMLTextAreaElement>('[data-qa]', card), text = ta.value.trim();
+  try {
+    b.disabled = true;
+    if (b.dataset.send !== undefined) {
+      if (!text) { ta.classList.add('err'); say('Напишите ответ'); return; }
+      await answerQ(q.id, text, true, q.source === 'telegram' ? 'Ответ отправлен в Telegram' : 'Ответ отправлен письмом');
+    } else if (b.dataset.mailto !== undefined) {
+      // письмо из почты владелицы: тема и текст подставлены, вопрос гостя — цитатой
+      location.href = `mailto:${q.contact}?subject=${enc('Ответ на ваш вопрос — КофеСобакен')}&body=${enc((text ? text + '\n\n' : '') + '— Ваш вопрос:\n' + q.body)}`;
+      await answerQ(q.id, text, false, 'Открыли письмо — отправьте его из почты');
+    } else if (b.dataset.tgme !== undefined) {
+      if (text) await navigator.clipboard?.writeText(text).catch(() => undefined);
+      window.open(`https://t.me/${enc(nick(q.contact))}`, '_blank', 'noopener');
+      await answerQ(q.id, text, false, text ? 'Ответ скопирован — вставьте его в чат с гостем' : 'Отмечено: отвечено');
+    } else if (b.dataset.mark !== undefined) {
+      await answerQ(q.id, text, false, 'Отмечено: отвечено');
+    }
+  } catch (err) { oops(err, { answer: ta }); } finally { b.disabled = false; }
+});
+$$('[data-qf]').forEach(c => c.addEventListener('click', () => { $$('[data-qf]').forEach(x => x.classList.toggle('on', x === c)); qf = c.dataset.qf!; renderQ(); }));
 
 // ================= МЕНЮ =================
 let MI: MenuItem[] = [];
@@ -455,7 +521,7 @@ function pw2(f: HTMLFormElement) {
   if (bad) say(bad);
   return !bad;
 }
-function entered(m: Me) { me = m; applyRole(); if (!m.must_change_password) { loadBk(); loadOr(); } }
+function entered(m: Me) { me = m; applyRole(); if (!m.must_change_password) { loadBk(); loadOr(); loadQ(); } }
 
 $('#showPass').addEventListener('click', () => { const p = lf('pass'); p.type = p.type === 'password' ? 'text' : 'password'; });
 $('#forgot').addEventListener('click', async e => {
@@ -504,7 +570,7 @@ changeForm.addEventListener('submit', async e => {
 });
 $$('.js-logout').forEach(b => b.addEventListener('click', async () => { try { await api('/admin/logout', { method: 'POST' }); } catch { /* всё равно выходим */ } me = null; location.hash = '#login'; route(); }));
 
-const loaders: Record<string, () => void> = { bookings: loadBk, orders: loadOr, menu: loadMi, events: loadEv, content: loadContent, notify: () => { loadContent(); loadNotes(); }, staff: loadStaff };
+const loaders: Record<string, () => void> = { bookings: loadBk, orders: loadOr, questions: loadQ, menu: loadMi, events: loadEv, content: loadContent, notify: () => { loadContent(); loadNotes(); }, staff: loadStaff };
 function route() {
   const [s, sub] = (location.hash.slice(1) || 'bookings').split('/');
   closeSheet();
@@ -528,5 +594,5 @@ async function boot() {
   route();
 }
 boot();
-// раз в минуту — свежие брони и заказы
-setInterval(() => { if (me && !me.must_change_password && !document.hidden) { loadBk(); loadOr(); } }, 60000);
+// раз в минуту — свежие брони, заказы и вопросы (вопросы — не трогаем, пока владелица пишет ответ)
+setInterval(() => { if (me && !me.must_change_password && !document.hidden) { loadBk(); loadOr(); if (!$$<HTMLTextAreaElement>('#qList [data-qa]').some(t => t.value)) loadQ(); } }, 60000);

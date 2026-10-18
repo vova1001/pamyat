@@ -59,7 +59,11 @@ func (l *RateLimiter) Fail(key string) { l.Allow(key) }
 func (l *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !l.Allow(r.RemoteAddr) {
-			writeErr(w, http.StatusTooManyRequests, "rate_limited", "Слишком много попыток — подождите минуту", nil)
+			msg := "Слишком много попыток — подождите минуту"
+			if l.window >= time.Hour {
+				msg = "Слишком много сообщений подряд — попробуйте через час или напишите нам в Telegram"
+			}
+			writeErr(w, http.StatusTooManyRequests, "rate_limited", msg, nil)
 			return
 		}
 		next.ServeHTTP(w, r)

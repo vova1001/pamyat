@@ -368,3 +368,17 @@ body.sheet .ovl{opacity:1;pointer-events:auto}
 .bubble__body{white-space:pre-line}
 .drop.busy::after{content:"Загружаем…";position:absolute;inset:0;display:grid;place-items:center;background:rgba(255,249,241,.8);font-weight:800}
 #staffList .bk__who span{overflow-wrap:anywhere}
+/* вопросы гостей — карточки из компонентов «Брони» */
+.q__body{white-space:pre-line;font-size:15px;line-height:1.5;padding-right:4px}
+.q__ans{background:var(--cream);border-radius:var(--r-sm);padding:10px 14px;font-size:14px;white-space:pre-line}
+.q__ans small{display:block;font-size:12px;font-weight:700;color:var(--soft);margin-bottom:2px}
+.q__form{display:grid;gap:8px}
+.q__form[hidden]{display:none}
+.q__again{justify-self:start;padding:0}
+@media (min-width:1024px){
+  .bk.q{grid-template-columns:240px minmax(0,1fr) minmax(0,1fr);align-items:start;padding:20px 22px}
+  .bk.q .bk__st{position:absolute;right:18px;top:18px}
+  .bk.q .q__body{grid-column:2;padding-right:120px}
+  .bk.q .q__ans,.bk.q .q__form{grid-column:3;margin-top:34px}
+  .bk.q .q__again{grid-column:1;grid-row:2}
+}

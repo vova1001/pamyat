@@ -11,9 +11,12 @@ import (
 )
 
 const deleteOldBookings = `-- name: DeleteOldBookings :execrows
+
 DELETE FROM bookings WHERE created_at < $1 AND day < $1::date
 `
 
+// Срок хранения персональных данных гостей (политика конфиденциальности, п. 4): 1 год.
+// Платежи не удаляются: в них нет имён и телефонов, а учёт может требовать хранить их дольше.
 func (q *Queries) DeleteOldBookings(ctx context.Context, createdAt time.Time) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteOldBookings, createdAt)
 	if err != nil {
@@ -40,6 +43,18 @@ DELETE FROM orders WHERE created_at < $1
 
 func (q *Queries) DeleteOldOrders(ctx context.Context, createdAt time.Time) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteOldOrders, createdAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteOldQuestions = `-- name: DeleteOldQuestions :execrows
+DELETE FROM questions WHERE created_at < $1
+`
+
+func (q *Queries) DeleteOldQuestions(ctx context.Context, createdAt time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOldQuestions, createdAt)
 	if err != nil {
 		return 0, err
 	}

@@ -33,6 +33,7 @@ type Server struct {
 	loginLimit   *RateLimiter // неверные пароли с одного адреса
 	emailLimit   *RateLimiter // неверные пароли к одной почте — с любых адресов
 	resetLimit   *RateLimiter // письма «забыли пароль» на одну почту
+	askLimit     *RateLimiter // вопросы с сайта с одного адреса
 }
 
 type Options struct {
@@ -51,6 +52,7 @@ func New(svc *service.Service, pay payments.Provider, o Options) *Server {
 		loginLimit: NewRateLimiter(8, 15*time.Minute), // 8 неверных паролей за 15 минут
 		emailLimit: NewRateLimiter(20, 15*time.Minute),
 		resetLimit: NewRateLimiter(3, time.Hour), // 3 письма в час на одну почту
+		askLimit:   NewRateLimiter(5, time.Hour), // 5 вопросов в час с одного адреса
 	}
 }
 
@@ -68,6 +70,7 @@ func (s *Server) Routes() http.Handler {
 		r.With(s.formLimit.Middleware).Post("/orders", s.createOrder)
 		r.With(s.formLimit.Middleware).Post("/bookings", s.createBooking)
 		r.With(s.formLimit.Middleware).Post("/events/{id}/signups", s.createSignup)
+		r.With(s.askLimit.Middleware).Post("/questions", s.createQuestion)
 
 		r.Get("/payments/{pid}", s.paymentStatus)
 		r.Post("/payments/webhook", s.paymentWebhook)
@@ -107,6 +110,8 @@ func (s *Server) Routes() http.Handler {
 					r.Delete("/events/{id}", s.deleteEvent)
 					r.Get("/events/{id}/signups", s.listSignups)
 					r.Post("/uploads", s.upload)
+					r.Get("/questions", s.listQuestions)
+					r.Post("/questions/{id}/answer", s.answerQuestion)
 				})
 
 				// только администратор: тексты и фото сайта, уведомления, сотрудники

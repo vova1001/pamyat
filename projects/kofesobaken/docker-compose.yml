@@ -43,6 +43,7 @@ services:
       MEDIA_STORE: ${MEDIA_STORE:-disk}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_DOMAIN_VERIFIED: ${MAIL_DOMAIN_VERIFIED:-false}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     volumes:
       - uploads:/data/uploads

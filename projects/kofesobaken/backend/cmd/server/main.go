@@ -5,6 +5,7 @@
 //	ADMIN_LINK_ON_START=true — то же при каждом старте (хостинг без консоли, например бесплатный Render)
 //	Без этого ссылка выдаётся, только пока пароль не задан и прежняя ссылка истекла (перезапуск её не меняет).
 //	RESEND_API_KEY, MAIL_FROM, TELEGRAM_BOT_TOKEN — настоящие письма и сообщения; без них — в журнал.
+//	MAIL_DOMAIN_VERIFIED=true — домен MAIL_FROM подтверждён в Resend: ответы на вопросы уходят гостям письмом.
 package main
 
 import (
@@ -68,6 +69,7 @@ func run() error {
 	svc := service.New(pool, pay, channels(cfg), cfg.Location)
 	svc.SetPublicURL(cfg.PublicURL)
 	svc.SetAdminPasswordTemporary(cfg.AdminPassTemp)
+	svc.SetMailDomainVerified(cfg.MailDomainOK)
 	if err := svc.Bootstrap(ctx, cfg.AdminEmail, cfg.AdminPassword, cfg.SeedDemo); err != nil {
 		return err
 	}
@@ -93,6 +95,7 @@ func run() error {
 
 	go svc.RunRetention(ctx)    // данные гостей храним 1 год (политика конфиденциальности)
 	go svc.RunPaymentSweep(ctx) // статус платежей, если уведомление платёжной системы не пришло
+	go svc.RunTelegram(ctx)     // сообщения боту: подключение владелицы, вопросы гостей, её ответы реплаем
 	if cfg.KeepAwake {
 		go keepAwake(ctx, cfg.PublicURL+"/healthz")
 	}
@@ -116,7 +119,7 @@ func run() error {
 		_ = srv.Shutdown(sh)
 	}()
 	slog.Info("сервер запущен", "addr", cfg.HTTPAddr, "payments", pay.Name(), "photos", cfg.MediaStore,
-		"mail", cfg.ResendAPIKey != "", "telegram", cfg.TelegramToken != "")
+		"mail", cfg.ResendAPIKey != "", "mail_guests", cfg.MailDomainOK, "telegram", cfg.TelegramToken != "")
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}

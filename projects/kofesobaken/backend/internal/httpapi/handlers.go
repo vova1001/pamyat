@@ -601,3 +601,46 @@ func (s *Server) serveUpload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	http.ServeContent(w, r, name, f.ModTime, bytes.NewReader(f.Data))
 }
+
+// ---------- вопросы гостей ----------
+
+func (s *Server) createQuestion(w http.ResponseWriter, r *http.Request) {
+	var in service.QuestionInput
+	if !decode(w, r, &in) {
+		return
+	}
+	if _, err := s.svc.CreateQuestion(r.Context(), in); err != nil {
+		fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]bool{"ok": true})
+}
+
+func (s *Server) listQuestions(w http.ResponseWriter, r *http.Request) {
+	v, err := s.svc.ListQuestions(r.Context())
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
+func (s *Server) answerQuestion(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	var in struct {
+		Answer string `json:"answer"`
+		Send   bool   `json:"send"`
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	q, err := s.svc.AnswerQuestion(r.Context(), id, in.Answer, in.Send)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, q)
+}

@@ -46,6 +46,14 @@ func TestResendSend(t *testing.T) {
 	if !strings.Contains(got["text"].(string), "https://site.test/admin#bookings") {
 		t.Fatal("текстовая версия письма")
 	}
+	if _, ok := got["reply_to"]; ok {
+		t.Fatal("reply_to без адреса")
+	}
+	// вопрос гостя: «Ответить» в почте — сразу гостю
+	_ = ch.Send(context.Background(), "owner@example.com", notify.Message{Kind: "question", Title: "Вопрос", Body: "?", ReplyTo: "guest@example.com"})
+	if got["reply_to"] != "guest@example.com" {
+		t.Fatalf("reply_to: %+v", got["reply_to"])
+	}
 }
 
 func TestResendError(t *testing.T) {
@@ -130,26 +138,43 @@ func TestTelegramSend(t *testing.T) {
 	}
 }
 
-func TestTelegramStarts(t *testing.T) {
+func TestTelegramUpdates(t *testing.T) {
 	st := &tgStub{updates: `[
-		{"update_id":10,"message":{"text":"привет","chat":{"id":5,"type":"private","first_name":"Вова"}}},
-		{"update_id":11,"message":{"text":"/start abc","chat":{"id":7,"type":"private","username":"owner","first_name":"Вова"}}},
+		{"update_id":10,"message":{"message_id":3,"text":"привет","chat":{"id":5,"type":"private","first_name":"Вова","last_name":"О."}}},
+		{"update_id":11,"message":{"message_id":4,"text":"/start abc","chat":{"id":7,"type":"private","username":"owner","first_name":"Вова"}}},
 		{"update_id":12,"message":{"text":"/start abc","chat":{"id":-100,"type":"group"}}},
-		{"update_id":13}
+		{"update_id":13},
+		{"update_id":14,"message":{"message_id":9,"caption":"а это можно?","chat":{"id":7,"type":"private","username":"owner"},"reply_to_message":{"message_id":77}}}
 	]`}
 	srv := st.server(t)
 	tg := notify.Telegram{Token: "TOKEN", BaseURL: srv.URL}
 	if u, err := tg.BotUsername(context.Background()); err != nil || u != "kofesobaken_bot" {
 		t.Fatalf("бот: %q %v", u, err)
 	}
-	starts, next, err := tg.Starts(context.Background(), 9)
-	if err != nil || next != 14 || len(starts) != 1 {
-		t.Fatalf("starts: %+v %d %v", starts, next, err)
+	ups, next, err := tg.Updates(context.Background(), 9, 0)
+	if err != nil || next != 15 || len(ups) != 3 {
+		t.Fatalf("updates: %+v %d %v", ups, next, err)
 	}
-	if s := starts[0]; s.ChatID != 7 || s.Code != "abc" || s.Name != "@owner" {
-		t.Fatalf("старт: %+v", s)
+	if u := ups[0]; u.ChatID != 5 || u.MessageID != 3 || u.Who() != "Вова О." || u.Text != "привет" {
+		t.Fatalf("сообщение гостя: %+v", u)
+	}
+	if _, ok := ups[0].StartCode(); ok {
+		t.Fatal("обычный текст — не /start")
+	}
+	if c, ok := ups[1].StartCode(); !ok || c != "abc" || ups[1].Who() != "@owner" {
+		t.Fatalf("старт: %+v", ups[1])
+	}
+	if u := ups[2]; u.Text != "а это можно?" || u.ReplyTo != 77 {
+		t.Fatalf("реплай с подписью: %+v", u)
 	}
 	if st.calls["getUpdates"][0]["offset"] != float64(9) {
 		t.Fatal("offset")
+	}
+	if _, err := tg.Reply(context.Background(), 5, "ответ", 3); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(st.calls["sendMessage"][0]["reply_parameters"])
+	if !strings.Contains(string(raw), `"message_id":3`) {
+		t.Fatalf("реплай гостю: %s", raw)
 	}
 }

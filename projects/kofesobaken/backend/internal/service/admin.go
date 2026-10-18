@@ -370,6 +370,7 @@ type Site struct {
 	Menu    []store.MenuItem `json:"menu"`
 	Events  []PublicEvent    `json:"events"`
 	Order   SiteOrder        `json:"order"`
+	Bot     string           `json:"question_bot"` // имя бота Telegram для вопросов; пусто — бот не настроен
 }
 
 func (s *Service) Site(ctx context.Context) (Site, error) {
@@ -395,5 +396,5 @@ func (s *Service) Site(ctx context.Context) (Site, error) {
 	if err != nil {
 		return Site{}, err
 	}
-	return Site{Content: c, Menu: menu, Events: evs, Order: SiteOrder{DeliveryMinKop: o.DeliveryMinKop, DeliveryRadiusKm: o.DeliveryRadiusKm, BookingPrepayKop: BookingPrepayKop}}, nil
+	return Site{Content: c, Menu: menu, Events: evs, Order: SiteOrder{DeliveryMinKop: o.DeliveryMinKop, DeliveryRadiusKm: o.DeliveryRadiusKm, BookingPrepayKop: BookingPrepayKop}, Bot: s.BotName()}, nil
 }

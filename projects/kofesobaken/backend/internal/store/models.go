@@ -137,6 +137,22 @@ type Payment struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
+type Question struct {
+	ID             int64       `json:"id"`
+	Source         string      `json:"source"`
+	Name           string      `json:"name"`
+	ContactKind    string      `json:"contact_kind"`
+	Contact        string      `json:"contact"`
+	Body           string      `json:"body"`
+	TgChatID       pgtype.Int8 `json:"tg_chat_id"`
+	TgMessageID    pgtype.Int8 `json:"tg_message_id"`
+	OwnerMessageID pgtype.Int8 `json:"owner_message_id"`
+	Answer         string      `json:"answer"`
+	AnsweredVia    string      `json:"answered_via"`
+	AnsweredAt     *time.Time  `json:"answered_at"`
+	CreatedAt      time.Time   `json:"created_at"`
+}
+
 type Session struct {
 	TokenHash string    `json:"token_hash"`
 	AdminID   int64     `json:"admin_id"`

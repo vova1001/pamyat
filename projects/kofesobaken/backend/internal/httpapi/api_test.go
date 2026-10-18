@@ -423,7 +423,7 @@ func TestClosedWithoutLogin(t *testing.T) {
 		{"GET", "/api/admin/events"}, {"GET", "/api/admin/events/1/signups"}, {"GET", "/api/admin/content"}, {"PUT", "/api/admin/content"},
 		{"GET", "/api/admin/settings"}, {"GET", "/api/admin/notifications"}, {"POST", "/api/admin/uploads"},
 		{"GET", "/api/admin/staff"}, {"POST", "/api/admin/staff"}, {"PUT", "/api/admin/staff/1"}, {"POST", "/api/admin/staff/1/password"},
-		{"POST", "/api/admin/password"},
+		{"POST", "/api/admin/password"}, {"GET", "/api/admin/questions"}, {"POST", "/api/admin/questions/1/answer"},
 	} {
 		st, m, _ := c.do(p[0], p[1], map[string]any{})
 		if st != 401 || errCode(m) != "unauthorized" {
@@ -596,5 +596,57 @@ func TestLoginLimitNotBypassedByHeaders(t *testing.T) {
 	}
 	if st := try("X-Real-IP", "10.2.0.2", "other@example.com"); st != 401 {
 		t.Fatalf("другая почта с нового адреса: %d", st)
+	}
+}
+
+func TestQuestionsAPI(t *testing.T) {
+	c, _ := setup(t)
+	// ошибки полей — 422 с полями
+	st, m, _ := c.do("POST", "/api/questions", map[string]any{"name": "Анна", "via": "email", "contact": "нет", "question": "Можно с котом?"})
+	if st != 422 || m["error"].(map[string]any)["fields"].(map[string]any)["contact"] == nil {
+		t.Fatalf("422: %d %v", st, m)
+	}
+	if st, _, _ := c.do("POST", "/api/questions", map[string]any{"name": "Анна", "via": "email", "contact": "anna@example.com", "question": "Можно с котом?"}); st != 201 {
+		t.Fatalf("вопрос: %d", st)
+	}
+	if st, _, _ := c.do("POST", "/api/questions", map[string]any{"name": "Олег", "via": "telegram", "contact": "@oleg_k", "question": "Есть розетки?"}); st != 201 {
+		t.Fatalf("вопрос с ником: %d", st)
+	}
+	// ограничение частоты: 5 в час с одного адреса (ошибочные тоже считаются)
+	for i := 0; i < 2; i++ {
+		c.do("POST", "/api/questions", map[string]any{"name": "Спам", "via": "email", "contact": "s@example.com", "question": "спам спам"})
+	}
+	if st, m, _ := c.do("POST", "/api/questions", map[string]any{"name": "Спам", "via": "email", "contact": "s@example.com", "question": "спам спам"}); st != 429 || errCode(m) != "rate_limited" {
+		t.Fatalf("частота: %d %v", st, m)
+	}
+
+	// кабинет: список (новые сверху) и ответ
+	if st, _, _ := c.do("POST", "/api/admin/login", map[string]string{"email": "owner@example.com", "password": "pass-123"}); st != 200 {
+		t.Fatal("вход")
+	}
+	st, m, _ = c.do("GET", "/api/admin/questions", nil)
+	items, _ := m["items"].([]any)
+	if st != 200 || len(items) != 4 || m["mail_direct"] != false {
+		t.Fatalf("список: %d %v", st, m)
+	}
+	var annaID any
+	for _, it := range items {
+		if q := it.(map[string]any); q["contact"] == "anna@example.com" {
+			annaID = q["id"]
+			if q["can_send"] != false || q["answered_at"] != nil {
+				t.Fatalf("вопрос: %v", q)
+			}
+		}
+	}
+	path := fmt.Sprintf("/api/admin/questions/%v/answer", annaID)
+	if st, m, _ := c.do("POST", path, map[string]any{"answer": "Да", "send": true}); st != 409 || errCode(m) != "conflict" {
+		t.Fatalf("письмом без домена: %d %v", st, m)
+	}
+	st, m, _ = c.do("POST", path, map[string]any{"answer": "Да, ждём", "send": false})
+	if st != 200 || m["answered_via"] != "manual" || m["answer"] != "Да, ждём" || m["answered_at"] == nil {
+		t.Fatalf("отметка: %d %v", st, m)
+	}
+	if st, _, _ := c.do("POST", "/api/admin/questions/99999/answer", map[string]any{"answer": "x"}); st != 404 {
+		t.Fatalf("нет вопроса: %d", st)
 	}
 }

@@ -253,6 +253,53 @@ f.addEventListener('submit', async e => {
   } finally { evSubmit.disabled = false; }
 });
 
+// ---------- «Задать вопрос» ----------
+const askM = $('#askModal'), askF = $<HTMLFormElement>('#askForm'), askC = $<HTMLInputElement>('#askContact');
+const askBtn = $<HTMLButtonElement>('#askSubmit'), askViaT = $<HTMLInputElement>('#askViaT');
+const askIn = (n: string) => askF.elements.namedItem(n) as HTMLInputElement;
+const openAsk = () => {
+  askM.classList.remove('is-sent'); askM.classList.add('open'); document.body.style.overflow = 'hidden';
+  setTimeout(() => askIn('name').focus(), 300);
+};
+const closeAsk = () => { askM.classList.remove('open'); document.body.style.overflow = ''; $('#askOpen').focus(); };
+$('#askOpen').addEventListener('click', openAsk);
+$$('[data-close]', askM).forEach(b => b.addEventListener('click', closeAsk));
+askM.addEventListener('click', e => { if (e.target === askM) closeAsk(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && askM.classList.contains('open')) closeAsk(); });
+const setAskVia = () => {
+  const tg = askViaT.checked;
+  askC.value = ''; askC.type = tg ? 'text' : 'email'; askC.inputMode = tg ? 'text' : 'email';
+  askC.autocomplete = tg ? 'off' : 'email'; askC.placeholder = tg ? '@ваш_ник' : 'anna@mail.ru'; askC.classList.remove('err');
+};
+$$('input[name="askvia"]').forEach(i => i.addEventListener('change', setAskVia));
+askC.addEventListener('input', () => { if (askViaT.checked && askC.value && !askC.value.startsWith('@')) askC.value = '@' + askC.value.replace(/@/g, ''); });
+askF.addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = askIn('name'), q = askF.elements.namedItem('question') as HTMLTextAreaElement, tg = askViaT.checked;
+  const contact = askC.value.trim();
+  const bad = {
+    name: !name.value.trim(),
+    contact: tg ? !/^@[A-Za-z0-9_]{3,32}$/.test(contact) : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact),
+    question: q.value.trim().length < 3,
+  };
+  name.classList.toggle('err', bad.name); askC.classList.toggle('err', bad.contact); q.classList.toggle('err', bad.question);
+  if (bad.name || bad.contact || bad.question) {
+    say(bad.name ? 'Как к вам обращаться?' : bad.contact ? (tg ? 'Ник в Telegram — например, @anna_k' : 'Проверьте почту — на неё придёт ответ') : 'Напишите вопрос');
+    return;
+  }
+  if (!askIn('consent').checked) { say('Нужно согласие на обработку данных'); return; }
+  askBtn.disabled = true;
+  try {
+    await api('/questions', { body: { name: name.value, via: tg ? 'telegram' : 'email', contact, question: q.value, website: askIn('website').value } });
+    $('#askDoneText').textContent = tg
+      ? `Ответим в Telegram — напишем ${contact}. Проверьте, что ник указан верно.`
+      : `Ответ придёт на ${contact}. Если не увидите письмо — загляните в «Спам».`;
+    askF.reset(); setAskVia(); askM.classList.add('is-sent');
+  } catch (err) {
+    showFail(err, { name, contact: askC, question: q });
+  } finally { askBtn.disabled = false; }
+});
+
 // ---------- возврат с оплаты ----------
 async function afterPayment() {
   const q = new URLSearchParams(location.search), id = q.get('payment');

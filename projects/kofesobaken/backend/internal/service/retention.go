@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// RetentionPeriod — сколько храним данные гостей (брони, заказы, записи, журнал уведомлений).
+// RetentionPeriod — сколько храним данные гостей (брони, заказы, записи, вопросы, журнал уведомлений).
 const RetentionPeriod = 365 * 24 * time.Hour
 
 // PurgeOld удаляет данные гостей старше срока хранения. Возвращает, сколько записей удалено.
@@ -14,7 +14,7 @@ func (s *Service) PurgeOld(ctx context.Context) (int64, error) {
 	cutoff := s.now().Add(-RetentionPeriod)
 	var total int64
 	for _, del := range []func(context.Context, time.Time) (int64, error){
-		s.q.DeleteOldBookings, s.q.DeleteOldOrders, s.q.DeleteOldSignups, s.q.DeleteOldNotifications,
+		s.q.DeleteOldBookings, s.q.DeleteOldOrders, s.q.DeleteOldSignups, s.q.DeleteOldNotifications, s.q.DeleteOldQuestions,
 	} {
 		n, err := del(ctx, cutoff)
 		if err != nil {

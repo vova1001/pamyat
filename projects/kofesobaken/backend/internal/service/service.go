@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -66,6 +68,10 @@ type Service struct {
 	publicURL string // адрес сайта — ссылки в письмах и сообщениях
 	// adminPassTemp — ADMIN_PASSWORD временный (сгенерирован хостингом): при первом входе — смена.
 	adminPassTemp bool
+	mailDirect    bool         // письма гостям уходят с сайта (у Resend подтверждён домен)
+	tgMu          sync.Mutex   // один getUpdates за раз
+	tgPolling     atomic.Bool  // идёт фоновый опрос бота
+	botName       atomic.Value // имя бота Telegram (string)
 }
 
 func New(db *pgxpool.Pool, pay payments.Provider, channels []notify.Channel, loc *time.Location) *Service {

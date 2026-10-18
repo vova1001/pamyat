@@ -16,3 +16,5 @@ export type PaymentStatus = S['PaymentStatus'];
 export type ApiError = S['Error'];
 export type Me = S['Me'];
 export type Staff = S['Staff'];
+export type Question = S['Question'];
+export type QuestionList = S['QuestionList'];

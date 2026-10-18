@@ -10,12 +10,13 @@ import (
 )
 
 type Message struct {
-	Kind    string // booking, order, signup, full, test, reset, setup
+	Kind    string // booking, order, signup, full, test, reset, setup, question, answer
 	Title   string
 	Body    string
 	Buttons []string
 	Phone   string // телефон гостя — кнопка «Позвонить»
 	Link    string // ссылка в кабинет (или ссылка входа — для писем reset/setup)
+	ReplyTo string // почта для «Ответить» в письме (вопрос гостя — его почта)
 }
 
 type Channel interface {

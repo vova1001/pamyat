@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -178,7 +179,7 @@ const (
 type tgLink struct {
 	CodeHash  string    `json:"code_hash,omitempty"`
 	ExpiresAt time.Time `json:"expires_at"`
-	Offset    int64     `json:"offset"` // getUpdates: всё до него уже прочитано
+	Offset    int64     `json:"offset,omitempty"` // устарело: offset getUpdates теперь в keyTgOffset
 }
 
 // TelegramConnectResult — настройки и ссылка на бота (пусто — бот не настроен, подключено заглушкой).
@@ -207,6 +208,7 @@ func (s *Service) TelegramConnect(ctx context.Context) (TelegramConnectResult, e
 		logErr("бот Telegram", err)
 		return TelegramConnectResult{}, &ConflictError{Msg: "Бот Telegram не отвечает — проверьте TELEGRAM_BOT_TOKEN"}
 	}
+	s.botName.Store(bot)
 	code, err := randomToken()
 	if err != nil {
 		return TelegramConnectResult{}, err
@@ -223,11 +225,11 @@ func (s *Service) TelegramConnect(ctx context.Context) (TelegramConnectResult, e
 	return TelegramConnectResult{Settings: st, Link: "https://t.me/" + bot + "?start=" + code}, err
 }
 
-// TelegramCheck — нажала ли владелица «Старт» по ссылке подключения; если да — чат подключён,
-// уходит проверочное сообщение. Кабинет вызывает раз в несколько секунд, пока ждёт.
+// TelegramCheck — нажала ли владелица «Старт» по ссылке подключения. Кабинет вызывает раз в несколько секунд, пока ждёт.
+// Сообщения боту читает фоновый опрос (RunTelegram); без него (тесты, команда admin-link) — читаем здесь, пока
+// ждём «Старт».
 func (s *Service) TelegramCheck(ctx context.Context) (Settings, error) {
-	tg, ok := s.telegram()
-	if !ok {
+	if _, ok := s.telegram(); !ok || s.tgPolling.Load() {
 		return s.Settings(ctx)
 	}
 	link, err := getJSON(ctx, s.q, keyTgLink, tgLink{})
@@ -237,42 +239,113 @@ func (s *Service) TelegramCheck(ctx context.Context) (Settings, error) {
 	if link.CodeHash == "" || s.now().After(link.ExpiresAt) {
 		return s.Settings(ctx)
 	}
-	starts, next, err := tg.Starts(ctx, link.Offset)
-	if err != nil {
+	if err := s.PollTelegram(ctx, 0); err != nil {
 		logErr("Telegram getUpdates", err)
-		return s.Settings(ctx)
 	}
-	link.Offset = next
-	var found *notify.Start
-	for i := range starts {
-		if hashToken(starts[i].Code) == link.CodeHash {
-			found = &starts[i]
-		}
-	}
-	if found == nil {
-		if err := putJSON(ctx, s.q, keyTgLink, link); err != nil {
-			return Settings{}, err
-		}
-		return s.Settings(ctx)
-	}
+	return s.Settings(ctx)
+}
+
+// connectOwner — «Старт» с действующим кодом: этот чат — владелицы, туда идут уведомления и вопросы гостей.
+func (s *Service) connectOwner(ctx context.Context, u notify.Update, link tgLink) error {
 	ns, err := s.notifySettings(ctx)
 	if err != nil {
-		return Settings{}, err
+		return err
 	}
 	link.CodeHash = ""
-	ns.TelegramConnected, ns.TelegramChatID, ns.TelegramChat = true, strconv.FormatInt(found.ChatID, 10), found.Name
+	ns.TelegramConnected, ns.TelegramChatID, ns.TelegramChat = true, strconv.FormatInt(u.ChatID, 10), u.Who()
 	if err := s.inTx(ctx, func(q *store.Queries) error {
 		if err := putJSON(ctx, q, keyTgLink, link); err != nil {
 			return err
 		}
 		return putJSON(ctx, q, keyNotify, ns)
 	}); err != nil {
-		return Settings{}, err
+		return err
 	}
 	if _, err := s.TestNotify(ctx, "telegram"); err != nil {
 		logErr("проверочное сообщение Telegram", err)
 	}
-	return s.Settings(ctx)
+	return nil
+}
+
+const keyTgOffset = "telegram_offset"
+
+// PollTelegram — один разбор входящих боту (getUpdates): подключение владелицы, вопросы гостей, её реплаи.
+// wait — сколько секунд Telegram ждёт новых сообщений. Offset — в базе: после перезапуска сервер продолжает
+// с того же места, а прочитанное Telegram больше не отдаёт.
+func (s *Service) PollTelegram(ctx context.Context, wait int) error {
+	tg, ok := s.telegram()
+	if !ok {
+		return nil
+	}
+	s.tgMu.Lock()
+	defer s.tgMu.Unlock()
+	offset, err := getJSON[int64](ctx, s.q, keyTgOffset, 0)
+	if err != nil {
+		return err
+	}
+	if offset == 0 { // до задачи «вопросы» offset лежал в ссылке подключения
+		link, err := getJSON(ctx, s.q, keyTgLink, tgLink{})
+		if err != nil {
+			return err
+		}
+		offset = link.Offset
+	}
+	ups, next, err := tg.Updates(ctx, offset, wait)
+	if err != nil {
+		return err
+	}
+	var herr error
+	for _, u := range ups {
+		if herr = s.handleUpdate(ctx, tg, u); herr != nil {
+			next = u.UpdateID // разберём это сообщение ещё раз
+			break
+		}
+	}
+	if next != offset {
+		if err := putJSON(ctx, s.q, keyTgOffset, next); err != nil {
+			return err
+		}
+	}
+	return herr
+}
+
+// RunTelegram — фоновый опрос бота (длинный: Telegram держит запрос до 25 секунд и отвечает сразу, как придёт
+// сообщение). Без вебхука: работает за любым адресом и не теряет сообщения, пока сервер спал.
+func (s *Service) RunTelegram(ctx context.Context) {
+	tg, ok := s.telegram()
+	if !ok {
+		return
+	}
+	s.tgPolling.Store(true)
+	defer s.tgPolling.Store(false)
+	pause := 5 * time.Second
+	for ctx.Err() == nil {
+		if s.BotName() == "" {
+			if name, err := tg.BotUsername(ctx); err == nil {
+				s.botName.Store(name)
+			}
+		}
+		if err := s.PollTelegram(ctx, 25); err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			slog.Warn("Telegram: входящие не прочитаны", "err", err)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(pause):
+			}
+			pause = min(pause*2, 2*time.Minute)
+			continue
+		}
+		pause = 5 * time.Second
+	}
+}
+
+// BotName — имя бота Telegram (для ссылки «Написать в Telegram» на сайте); пусто — бот не настроен.
+func (s *Service) BotName() string {
+	v, _ := s.botName.Load().(string)
+	return v
 }
 
 // telegramConnectStub — без бота: считаем подключённым чат из настроек и шлём проверку в журнал.

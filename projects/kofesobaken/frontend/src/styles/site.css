@@ -450,3 +450,23 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
 .legal th,.legal td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
 .consent a{color:inherit;text-decoration:underline}
 .legal__back{padding:10px 16px;font-size:14px}
+/* «Задать вопрос»: плавающая кнопка (на телефоне — над нижней панелью) и окно с формой */
+.ask-fab{position:fixed;right:14px;bottom:16px;z-index:44;display:inline-flex;align-items:center;justify-content:center;gap:10px;width:56px;height:56px;padding:0;border:0;border-radius:999px;background:var(--espresso);color:var(--milk);font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 12px 28px -12px rgba(42,26,18,.75);transition:bottom .5s var(--ease),transform .35s var(--ease),background .3s}
+.ask-fab svg{width:26px;height:26px;flex:none}
+.ask-fab span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ask-fab:hover{background:var(--coffee);transform:translateY(-2px)}
+body:has(.mbar.show) .ask-fab{bottom:86px}
+body.menu-open .ask-fab,body:has(.modal.open) .ask-fab{opacity:0;pointer-events:none}
+.ask__head{margin:0 50px 18px 0}
+.ask__head h3{font-family:var(--f-head);font-weight:800;font-size:24px;letter-spacing:-.03em;line-height:1.15}
+.ask__head p{color:var(--soft);font-size:14px;margin-top:6px}
+textarea.inp.ask__q{font:inherit;font-size:16px;font-weight:600;color:inherit;height:auto;min-height:112px;padding:14px 16px;resize:vertical;line-height:1.5}
+.ask__trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.ask__bot{text-align:center;font-size:14px;color:var(--soft)}
+.ask__bot a{color:var(--tomato);font-weight:700}
+@media (min-width:1024px){
+  .ask-fab{right:28px;bottom:28px;width:auto;height:54px;padding:0 24px 0 20px}
+  .ask-fab span{position:static;width:auto;height:auto;overflow:visible;clip:auto}
+  body:has(.mbar.show) .ask-fab{bottom:28px}
+}
+#askModal.is-sent .ask__head p{display:none}

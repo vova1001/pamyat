@@ -37,7 +37,9 @@ services:
         value: "true"
       - key: RESEND_API_KEY # почта через Resend; пусто — письма только в журнал
         sync: false
-      - key: TELEGRAM_BOT_TOKEN # бот от @BotFather; пусто — сообщения только в журнал
+      - key: MAIL_DOMAIN_VERIFIED # true — свой домен подтверждён в Resend: ответы на вопросы уходят гостям письмом
+        value: "false"
+      - key: TELEGRAM_BOT_TOKEN # бот от @BotFather: уведомления и вопросы гостей; пусто — только в журнал
         sync: false
       - key: SEED_DEMO # примеры мероприятий из эскиза; на боевом сайте не нужны
         value: "false"

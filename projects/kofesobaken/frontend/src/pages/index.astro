@@ -14,6 +14,7 @@ import Find from '../components/site/Find.astro';
 import Contacts from '../components/site/Contacts.astro';
 import Footer from '../components/site/Footer.astro';
 import EventModal from '../components/site/EventModal.astro';
+import Ask from '../components/site/Ask.astro';
 import { getSite } from '../lib/server';
 
 const site = await getSite();
@@ -45,6 +46,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
 </main>
 <Footer content={c} />
 <EventModal />
+<Ask bot={site.question_bot} />
 <script>import '../scripts/site.ts';</script>
 </body>
 </html>

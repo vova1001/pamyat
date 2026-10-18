@@ -31,6 +31,7 @@ type Config struct {
 	SeedDemo         bool
 	ResendAPIKey     string // почта через Resend; пусто — письма только в журнал
 	MailFrom         string // отправитель; до подтверждения домена — onboarding@resend.dev
+	MailDomainOK     bool   // MAIL_DOMAIN_VERIFIED: у Resend подтверждён домен — письма уходят и гостям (ответы на вопросы)
 	TelegramToken    string // бот Telegram; пусто — сообщения только в журнал
 	YooKassaShopID   string // ЮKassa: shopId магазина (тестового или боевого)
 	YooKassaSecret   string // ЮKassa: секретный ключ (test_… — тестовый магазин, live_… — боевой)
@@ -66,6 +67,7 @@ func Load() (Config, error) {
 		SeedDemo:         get("SEED_DEMO", "false") == "true",
 		ResendAPIKey:     os.Getenv("RESEND_API_KEY"),
 		MailFrom:         get("MAIL_FROM", notify.DefaultMailFrom),
+		MailDomainOK:     get("MAIL_DOMAIN_VERIFIED", "false") == "true",
 		TelegramToken:    os.Getenv("TELEGRAM_BOT_TOKEN"),
 		YooKassaShopID:   get("YOOKASSA_SHOP_ID", ""),
 		YooKassaSecret:   strings.TrimSpace(os.Getenv("YOOKASSA_SECRET_KEY")),
@@ -91,6 +93,11 @@ func Load() (Config, error) {
 		b := make([]byte, 32)
 		_, _ = rand.Read(b)
 		c.WebhookSecret = hex.EncodeToString(b)
+	}
+	if c.MailDomainOK && (c.ResendAPIKey == "" || strings.HasSuffix(c.MailFrom, "@resend.dev>") || strings.HasSuffix(c.MailFrom, "@resend.dev")) {
+		// без своего отправителя Resend доставляет только на почту владельца аккаунта — гостям письма не дойдут
+		c.Warnings = append(c.Warnings, "MAIL_DOMAIN_VERIFIED=true, но нет RESEND_API_KEY или MAIL_FROM на своём домене — ответы гостям письмом выключены")
+		c.MailDomainOK = false
 	}
 	if c.MediaStore != "disk" && c.MediaStore != "postgres" {
 		return c, errors.New("MEDIA_STORE: disk или postgres")

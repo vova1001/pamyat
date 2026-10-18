@@ -60,6 +60,19 @@ paths:
         "422": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
 
+  /questions:
+    post:
+      tags: [public]
+      summary: Вопрос с сайта — в кабинет, владелице на почту (Reply-To = почта гостя) и в Telegram. 5 в час с адреса
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/QuestionCreate" } } }
+      responses:
+        "201": { description: Принят, content: { application/json: { schema: { type: object, required: [ok], properties: { ok: { type: boolean } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
   /events/{id}/signups:
     post:
       tags: [public]
@@ -439,6 +452,28 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Notification" } } } } }
         "403": { $ref: "#/components/responses/Error" }
 
+  /admin/questions:
+    get:
+      tags: [admin]
+      summary: Вопросы гостей (с сайта и из Telegram-бота), новые сверху
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/QuestionList" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /admin/questions/{id}/answer:
+    post:
+      tags: [admin]
+      summary: Ответ на вопрос. send=true — отправить гостю (ботом или письмом с сайта, если can_send); иначе — отметка «отвечено»
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/QuestionAnswer" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Question" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
   /admin/uploads:
     post:
       tags: [admin]
@@ -615,6 +650,44 @@ components:
             delivery_min_kop: { type: integer, format: int64 }
             delivery_radius_km: { type: integer }
             booking_prepay_kop: { type: integer, format: int64 }
+        question_bot: { type: string, description: "Имя Telegram-бота для вопросов (без @); пусто — бот не настроен" }
+
+    QuestionCreate:
+      type: object
+      required: [name, via, contact, question]
+      properties:
+        name: { type: string, maxLength: 60 }
+        via: { type: string, enum: [email, telegram], description: Куда прислать ответ }
+        contact: { type: string, description: Почта или ник в Telegram }
+        question: { type: string, minLength: 3, maxLength: 2000 }
+        website: { type: string, description: Скрытое поле-ловушка для ботов — должно быть пустым }
+    Question:
+      type: object
+      required: [id, source, name, contact_kind, contact, body, answer, answered_via, answered_at, created_at, can_send]
+      properties:
+        id: { type: integer, format: int64 }
+        source: { type: string, enum: [site, telegram] }
+        name: { type: string }
+        contact_kind: { type: string, enum: [email, telegram] }
+        contact: { type: string, description: "Почта или @ник; у вопроса из бота может быть пустым" }
+        body: { type: string }
+        answer: { type: string }
+        answered_via: { type: string, enum: ["", telegram, email, manual] }
+        answered_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        can_send: { type: boolean, description: Ответ из кабинета дойдёт до гостя сам }
+    QuestionList:
+      type: object
+      required: [items, mail_direct]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Question" } }
+        mail_direct: { type: boolean, description: Письма гостям уходят с сайта (подтверждён домен почты) }
+    QuestionAnswer:
+      type: object
+      required: [answer]
+      properties:
+        answer: { type: string, maxLength: 3500 }
+        send: { type: boolean }
 
     OrderCreate:
       type: object

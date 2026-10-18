@@ -29,6 +29,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
   <symbol id="out" viewBox="0 0 24 24"><path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H10M15 8l4 4-4 4M19 12H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
   <symbol id="phone" viewBox="0 0 24 24"><path d="M5 3.5h3.5l1.7 4.3-2.2 1.4a11 11 0 0 0 6.8 6.8l1.4-2.2 4.3 1.7V19a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 3.5 5.1 1.5 1.5 0 0 1 5 3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="chat" viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9.6 8.6a2.4 2.4 0 1 1 3.4 2.2c-.6.3-1 .8-1 1.4v.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="14.9" r="1.1" fill="currentColor"/></symbol>
   <symbol id="mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
   <symbol id="tg" viewBox="0 0 24 24"><path d="M21.9 4.3 18.7 19.4c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 13 1.4 11.5c-1-.3-1-1 .2-1.5L20.5 2.9c.9-.3 1.6.2 1.4 1.4z" fill="currentColor"/></symbol>
   <symbol id="users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
@@ -83,6 +84,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
     <nav class="snav" aria-label="Разделы кабинета">
       <a href="#bookings" data-s="bookings"><svg><use href="#cal"/></svg>Брони<i class="cnt js-new" hidden></i></a>
       <a href="#orders" data-s="orders"><svg><use href="#bag"/></svg>Заказы<i class="cnt js-new-o" hidden></i></a>
+      <a href="#questions" data-s="questions"><svg><use href="#chat"/></svg>Вопросы<i class="cnt js-new-q" hidden></i></a>
       <a href="#menu" data-s="menu"><svg><use href="#cup"/></svg>Меню</a>
       <a href="#events" data-s="events"><svg><use href="#star"/></svg>Мероприятия</a>
       <a href="#content" data-s="content"><svg><use href="#image"/></svg>Фото и тексты</a>
@@ -137,6 +139,17 @@ Astro.response.headers.set('Cache-Control', 'no-store');
         <button class="chipb" data-of="cancelled">Отменённые</button>
       </div>
       <div id="orList"></div>
+    </section>
+
+    <!-- ---------- ВОПРОСЫ (собран из компонентов «Брони») ---------- -->
+    <section class="scr" id="s-questions" hidden>
+      <div class="ph"><div><span class="eyebrow">с сайта и из Telegram</span><h1>Вопросы</h1><p>Новые — сверху. Напишите ответ — он уйдёт гостю ботом или письмом; если гость оставил ник или почту, ответьте ему сами и отметьте «Отвечено».</p></div></div>
+      <div class="chips" role="tablist" aria-label="Фильтр вопросов">
+        <button class="chipb on" data-qf="wait">Ждут ответа<i class="js-new-qn">0</i></button>
+        <button class="chipb" data-qf="done">Отвеченные</button>
+        <button class="chipb" data-qf="all">Все</button>
+      </div>
+      <div id="qList"></div>
     </section>
 
     <!-- ---------- МЕНЮ ---------- -->
@@ -294,6 +307,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
   <nav class="tabbar" aria-label="Разделы кабинета">
     <a href="#bookings" data-s="bookings"><svg><use href="#cal"/></svg>Брони<i class="cnt js-new" hidden></i></a>
     <a href="#orders" data-s="orders"><svg><use href="#bag"/></svg>Заказы<i class="cnt js-new-o" hidden></i></a>
+    <a href="#questions" data-s="questions"><svg><use href="#chat"/></svg>Вопросы<i class="cnt js-new-q" hidden></i></a>
     <a href="#menu" data-s="menu"><svg><use href="#cup"/></svg>Меню</a>
     <a href="#events" data-s="events"><svg><use href="#star"/></svg>События</a>
     <a href="#content" data-s="content"><svg><use href="#image"/></svg>Фото</a>

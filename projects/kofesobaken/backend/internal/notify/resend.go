@@ -37,13 +37,17 @@ func (r Resend) Send(ctx context.Context, to string, m Message) error {
 	if base == "" {
 		base = "https://api.resend.com"
 	}
-	payload, _ := json.Marshal(map[string]any{
+	body := map[string]any{
 		"from":    from,
 		"to":      []string{to},
 		"subject": m.Title,
 		"html":    EmailHTML(m),
 		"text":    emailText(m),
-	})
+	}
+	if m.ReplyTo != "" {
+		body["reply_to"] = m.ReplyTo
+	}
+	payload, _ := json.Marshal(body)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(base, "/")+"/emails", bytes.NewReader(payload))
 	if err != nil {
 		return err

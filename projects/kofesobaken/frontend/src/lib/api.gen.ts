@@ -163,6 +163,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Вопрос с сайта — в кабинет, владелице на почту (Reply-To = почта гостя) и в Telegram. 5 в час с адреса */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["QuestionCreate"];
+                };
+            };
+            responses: {
+                /** @description Принят */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok: boolean;
+                        };
+                    };
+                };
+                400: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events/{id}/signups": {
         parameters: {
             query?: never;
@@ -1687,6 +1732,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Вопросы гостей (с сайта и из Telegram-бота), новые сверху */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["QuestionList"];
+                    };
+                };
+                401: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/questions/{id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ответ на вопрос. send=true — отправить гостю (ботом или письмом с сайта, если can_send); иначе — отметка «отвечено» */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["ID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["QuestionAnswer"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Question"];
+                    };
+                };
+                404: components["responses"]["Error"];
+                409: components["responses"]["Error"];
+                422: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/uploads": {
         parameters: {
             query?: never;
@@ -1892,6 +2019,51 @@ export interface components {
                 /** Format: int64 */
                 booking_prepay_kop: number;
             };
+            /** @description Имя Telegram-бота для вопросов (без @); пусто — бот не настроен */
+            question_bot?: string;
+        };
+        QuestionCreate: {
+            name: string;
+            /**
+             * @description Куда прислать ответ
+             * @enum {string}
+             */
+            via: "email" | "telegram";
+            /** @description Почта или ник в Telegram */
+            contact: string;
+            question: string;
+            /** @description Скрытое поле-ловушка для ботов — должно быть пустым */
+            website?: string;
+        };
+        Question: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            source: "site" | "telegram";
+            name: string;
+            /** @enum {string} */
+            contact_kind: "email" | "telegram";
+            /** @description Почта или @ник; у вопроса из бота может быть пустым */
+            contact: string;
+            body: string;
+            answer: string;
+            /** @enum {string} */
+            answered_via: "" | "telegram" | "email" | "manual";
+            /** Format: date-time */
+            answered_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** @description Ответ из кабинета дойдёт до гостя сам */
+            can_send: boolean;
+        };
+        QuestionList: {
+            items: components["schemas"]["Question"][];
+            /** @description Письма гостям уходят с сайта (подтверждён домен почты) */
+            mail_direct: boolean;
+        };
+        QuestionAnswer: {
+            answer: string;
+            send?: boolean;
         };
         OrderCreate: {
             /** @enum {string} */
