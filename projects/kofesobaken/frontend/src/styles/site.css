@@ -61,9 +61,10 @@ button,input,select{font:inherit;color:inherit}
 .chip{display:inline-flex;align-items:center;gap:8px;background:var(--milk);border-radius:999px;padding:7px 14px 7px 8px;font-weight:700;font-size:13px;box-shadow:0 0 0 1px var(--line)}
 .chip i{width:24px;height:24px;border-radius:50%;background:var(--tomato);display:grid;place-items:center}
 .chip i svg{width:14px;height:14px;fill:#fff}
-.hero h1{font-family:var(--f-head);font-weight:800;font-size:clamp(40px,11.4vw,128px);line-height:.95;letter-spacing:-.045em;margin:18px 0 16px}
+.hero__text{container-type:inline-size}
+.hero h1{font-family:var(--f-head);font-weight:800;font-size:min(clamp(40px,11.4vw,128px),16.5cqi);line-height:.95;letter-spacing:-.045em;margin:18px 0 16px}
 .hero h1 .ln{display:block;overflow:hidden;padding-bottom:.06em}
-.hero h1 .ln span{display:inline-block}
+.hero h1 .ln span{display:inline-block;white-space:nowrap}
 .hero h1 .accent{color:var(--tomato)}
 .hero h1 .ch{display:inline-block;transform:translateY(110%);animation:up .9s var(--ease) forwards}
 @keyframes up{to{transform:none}}
@@ -95,8 +96,8 @@ button,input,select{font:inherit;color:inherit}
 @keyframes pawfade{0%{opacity:.35}100%{opacity:0}}
 
 /* ---------- marquee ---------- */
-.marquee-wrap{overflow:hidden;padding:20px 0}
-.marquee{background:var(--tomato);color:var(--milk);transform:rotate(-2deg);margin:26px -20px 10px;padding:14px 0;overflow:hidden;position:relative;z-index:2}
+.marquee-wrap{overflow:hidden;padding:calc(2.4vw + 14px) 0}
+.marquee{background:var(--tomato);color:var(--milk);transform:rotate(-2deg);margin:26px -6vw 10px;padding:14px 0;overflow:hidden;position:relative;z-index:2}
 .marquee__track{display:flex;gap:28px;width:max-content;animation:mq 28s linear infinite;font-family:var(--f-head);font-weight:700;font-size:22px;text-transform:lowercase;white-space:nowrap}
 .marquee__track span{display:flex;align-items:center;gap:28px}
 .marquee__track svg{width:22px;height:22px;fill:var(--butter)}
@@ -329,9 +330,10 @@ h3{font-family:var(--f-head);font-weight:700;font-size:22px;line-height:1.15;let
   .hero__grid{grid-template-columns:1.05fr .95fr;align-items:center;gap:40px}
   .hero__lead{font-size:20px}
   .hero__media{height:min(640px,72vh)}
-  .hero h1{font-size:clamp(64px,7.4vw,118px)}
+  .hero__text{container-type:normal}
+  .hero h1{font-size:min(clamp(64px,7.4vw,118px),calc((min(100vw,1240px) - 120px)*.095))}
   .badge{width:150px;height:150px}
-  .marquee{margin:0 -20px}
+  .marquee{margin:0 -6vw}
   .sec{padding:130px 0}
   .sec-head{flex-direction:row;align-items:flex-end;justify-content:space-between;gap:40px;margin-bottom:56px}
   .sec-head>div{display:flex;flex-direction:column;gap:14px}
