@@ -74,7 +74,7 @@ ON CONFLICT (email) DO UPDATE SET
     role = 'admin', active = TRUE,
     must_change_password = CASE WHEN EXCLUDED.password_hash <> '' THEN EXCLUDED.must_change_password ELSE admins.must_change_password END,
     password_hash = CASE WHEN EXCLUDED.password_hash <> '' THEN EXCLUDED.password_hash ELSE admins.password_hash END
-RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at
+RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at, former_emails
 `
 
 type EnsureAdminParams struct {
@@ -100,12 +100,13 @@ func (q *Queries) EnsureAdmin(ctx context.Context, arg EnsureAdminParams) (Admin
 		&i.SetupTokenHash,
 		&i.SetupExpiresAt,
 		&i.LastLoginAt,
+		&i.FormerEmails,
 	)
 	return i, err
 }
 
 const getAdminByEmail = `-- name: GetAdminByEmail :one
-SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at FROM admins WHERE email = $1
+SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at, former_emails FROM admins WHERE email = $1
 `
 
 func (q *Queries) GetAdminByEmail(ctx context.Context, email string) (Admin, error) {
@@ -123,12 +124,38 @@ func (q *Queries) GetAdminByEmail(ctx context.Context, email string) (Admin, err
 		&i.SetupTokenHash,
 		&i.SetupExpiresAt,
 		&i.LastLoginAt,
+		&i.FormerEmails,
+	)
+	return i, err
+}
+
+const getAdminByFormerEmail = `-- name: GetAdminByFormerEmail :one
+SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at, former_emails FROM admins WHERE $1::text = ANY(former_emails) ORDER BY id DESC LIMIT 1
+`
+
+// Администратор, у которого эта почта была раньше (сменил в «Профиле»); самый свежий — первым.
+func (q *Queries) GetAdminByFormerEmail(ctx context.Context, dollar_1 string) (Admin, error) {
+	row := q.db.QueryRow(ctx, getAdminByFormerEmail, dollar_1)
+	var i Admin
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.Name,
+		&i.Role,
+		&i.Active,
+		&i.MustChangePassword,
+		&i.SetupTokenHash,
+		&i.SetupExpiresAt,
+		&i.LastLoginAt,
+		&i.FormerEmails,
 	)
 	return i, err
 }
 
 const getAdminByID = `-- name: GetAdminByID :one
-SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at FROM admins WHERE id = $1
+SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at, former_emails FROM admins WHERE id = $1
 `
 
 func (q *Queries) GetAdminByID(ctx context.Context, id int64) (Admin, error) {
@@ -146,12 +173,13 @@ func (q *Queries) GetAdminByID(ctx context.Context, id int64) (Admin, error) {
 		&i.SetupTokenHash,
 		&i.SetupExpiresAt,
 		&i.LastLoginAt,
+		&i.FormerEmails,
 	)
 	return i, err
 }
 
 const getAdminBySetupToken = `-- name: GetAdminBySetupToken :one
-SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at FROM admins WHERE setup_token_hash = $1 AND setup_expires_at > now()
+SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at, former_emails FROM admins WHERE setup_token_hash = $1 AND setup_expires_at > now()
 `
 
 func (q *Queries) GetAdminBySetupToken(ctx context.Context, setupTokenHash pgtype.Text) (Admin, error) {
@@ -169,6 +197,7 @@ func (q *Queries) GetAdminBySetupToken(ctx context.Context, setupTokenHash pgtyp
 		&i.SetupTokenHash,
 		&i.SetupExpiresAt,
 		&i.LastLoginAt,
+		&i.FormerEmails,
 	)
 	return i, err
 }
@@ -200,6 +229,38 @@ func (q *Queries) GetSession(ctx context.Context, tokenHash string) (GetSessionR
 		&i.Name,
 		&i.Role,
 		&i.MustChangePassword,
+	)
+	return i, err
+}
+
+const setOwnEmail = `-- name: SetOwnEmail :one
+UPDATE admins SET email = $2, former_emails = array_append(array_remove(former_emails, email), email)
+WHERE id = $1
+RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at, former_emails
+`
+
+type SetOwnEmailParams struct {
+	ID    int64  `json:"id"`
+	Email string `json:"email"`
+}
+
+// Своя почта из «Профиля»: прежняя запоминается (см. GetAdminByFormerEmail).
+func (q *Queries) SetOwnEmail(ctx context.Context, arg SetOwnEmailParams) (Admin, error) {
+	row := q.db.QueryRow(ctx, setOwnEmail, arg.ID, arg.Email)
+	var i Admin
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.Name,
+		&i.Role,
+		&i.Active,
+		&i.MustChangePassword,
+		&i.SetupTokenHash,
+		&i.SetupExpiresAt,
+		&i.LastLoginAt,
+		&i.FormerEmails,
 	)
 	return i, err
 }

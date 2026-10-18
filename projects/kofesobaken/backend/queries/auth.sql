@@ -47,3 +47,13 @@ DELETE FROM sessions WHERE admin_id = $1 AND token_hash <> $2;
 
 -- name: DeleteExpiredSessions :exec
 DELETE FROM sessions WHERE expires_at <= now();
+
+-- Своя почта из «Профиля»: прежняя запоминается (см. GetAdminByFormerEmail).
+-- name: SetOwnEmail :one
+UPDATE admins SET email = $2, former_emails = array_append(array_remove(former_emails, email), email)
+WHERE id = $1
+RETURNING *;
+
+-- Администратор, у которого эта почта была раньше (сменил в «Профиле»); самый свежий — первым.
+-- name: GetAdminByFormerEmail :one
+SELECT * FROM admins WHERE $1::text = ANY(former_emails) ORDER BY id DESC LIMIT 1;

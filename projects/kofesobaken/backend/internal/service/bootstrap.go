@@ -18,17 +18,7 @@ import (
 // SetAdminPasswordTemporary(true) — пароль из окружения временный: при первом входе — обязательная смена.
 func (s *Service) Bootstrap(ctx context.Context, adminEmail, adminPassword string, seedDemo bool) error {
 	if email := normEmail(adminEmail); email != "" {
-		hash := ""
-		a, err := s.q.GetAdminByEmail(ctx, email)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return err
-		}
-		if adminPassword != "" && (err != nil || a.PasswordHash == "") {
-			if hash, err = hashPassword(adminPassword); err != nil {
-				return err
-			}
-		}
-		if _, err := s.q.EnsureAdmin(ctx, store.EnsureAdminParams{Email: email, PasswordHash: hash, MustChangePassword: s.adminPassTemp}); err != nil {
+		if err := s.ensureAdmin(ctx, email, adminPassword); err != nil {
 			return err
 		}
 	} else {
@@ -57,13 +47,39 @@ func (s *Service) Bootstrap(ctx context.Context, adminEmail, adminPassword strin
 	return nil
 }
 
+// ensureAdmin — администратор из окружения. Если эту почту он уже сменил в «Профиле», второй вход
+// на старую почту не создаётся (иначе ADMIN_PASSWORD снова открыл бы кабинет по старой почте).
+func (s *Service) ensureAdmin(ctx context.Context, email, password string) error {
+	a, err := s.q.GetAdminByEmail(ctx, email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		b, ferr := s.q.GetAdminByFormerEmail(ctx, email)
+		if ferr == nil {
+			slog.Info("ADMIN_EMAIL — прежняя почта администратора, сменённая в кабинете; вход — по нынешней", "email", b.Email)
+			return nil
+		}
+		if !errors.Is(ferr, pgx.ErrNoRows) {
+			return ferr
+		}
+	} else if err != nil {
+		return err
+	}
+	hash := ""
+	if password != "" && (err != nil || a.PasswordHash == "") {
+		if hash, err = hashPassword(password); err != nil {
+			return err
+		}
+	}
+	_, err = s.q.EnsureAdmin(ctx, store.EnsureAdminParams{Email: email, PasswordHash: hash, MustChangePassword: s.adminPassTemp})
+	return err
+}
+
 // PendingSetup выдаёт одноразовую ссылку первого входа, если пароль администратора ещё не задан и
 // действующей ссылки нет. Выданная ссылка живёт до срока или до использования: перезапуск (выкладка)
 // её не перевыпускает, иначе ссылка, уже отправленная заказчику, перестанет работать.
 // Новая ссылка — только явно: команда admin-link или ADMIN_LINK_ON_START (IssueSetupLink).
 // Пустая строка — новая ссылка не нужна.
 func (s *Service) PendingSetup(ctx context.Context, adminEmail string) (string, error) {
-	a, err := s.q.GetAdminByEmail(ctx, normEmail(adminEmail))
+	a, err := s.adminByLogin(ctx, adminEmail)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil
 	}

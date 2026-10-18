@@ -322,6 +322,29 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, acc)
 }
 
+type emailIn struct {
+	CurrentPassword string `json:"current_password"`
+	Email           string `json:"email"`
+}
+
+// changeEmail — «Профиль»: своя почта (логин). Неверный текущий пароль считается как неверный вход.
+func (s *Server) changeEmail(w http.ResponseWriter, r *http.Request) {
+	if s.loginLimit.Blocked(r.RemoteAddr) {
+		s.tooMany(w)
+		return
+	}
+	var in emailIn
+	if !decode(w, r, &in) {
+		return
+	}
+	cur := current(r)
+	acc, err := s.svc.ChangeEmail(r.Context(), cur.acc, cur.token, in.CurrentPassword, in.Email)
+	if errors.Is(err, service.ErrWrongPassword) {
+		s.loginLimit.Fail(r.RemoteAddr)
+	}
+	respond(w, r, http.StatusOK, acc, err)
+}
+
 // ---------- сотрудники (только администратор) ----------
 
 func (s *Server) listStaff(w http.ResponseWriter, r *http.Request) {

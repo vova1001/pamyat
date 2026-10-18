@@ -160,13 +160,32 @@ paths:
   /admin/password:
     post:
       tags: [admin]
-      summary: Сменить свой пароль. С временным паролем (must_change_password) текущий не нужен, иначе обязателен. Другие сессии закрываются
+      summary: >-
+        Сменить свой пароль. С временным паролем (must_change_password) текущий не нужен, иначе обязателен.
+        Другие сессии закрываются; после обычной смены — письмо-уведомление на почту (если почта подключена)
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/PasswordChange" } } }
       responses:
         "200": { description: Сменён, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
         "401": { $ref: "#/components/responses/Error" }
+        "403": { description: "Неверный текущий пароль (code wrong_password)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /admin/email:
+    post:
+      tags: [admin]
+      summary: >-
+        «Профиль»: сменить свою почту (логин). Нужен текущий пароль; почта уникальна среди входов. Другие сессии
+        закрываются, на прежнюю почту — письмо-уведомление (если почта подключена). Ограничение частоты — как у входа
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/EmailChange" } } }
+      responses:
+        "200": { description: Сменена, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { description: "Неверный текущий пароль (code wrong_password) или сначала смена временного пароля", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: Почта уже занята другим входом, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "422": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
   /admin/setup:
@@ -781,6 +800,10 @@ components:
       type: object
       required: [new_password]
       properties: { current_password: { type: string }, new_password: { type: string, minLength: 8, maxLength: 72 } }
+    EmailChange:
+      type: object
+      required: [current_password, email]
+      properties: { current_password: { type: string }, email: { type: string, format: email, maxLength: 120 } }
     Setup:
       type: object
       required: [token, password]

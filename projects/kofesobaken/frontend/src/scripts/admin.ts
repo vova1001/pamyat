@@ -568,9 +568,44 @@ changeForm.addEventListener('submit', async e => {
     changeForm.reset(); entered(m); say('Пароль сохранён'); location.hash = '#bookings'; route();
   } catch (err) { oops(err, { new_password: field(changeForm, 'pass') }); } finally { btn.disabled = false; }
 });
+// ================= ПРОФИЛЬ =================
+const emailForm = $<HTMLFormElement>('#emailForm');
+const passForm = $<HTMLFormElement>('#passForm');
+function loadProfile() {
+  if (!me) return;
+  const card = $('#profileCard');
+  ($<HTMLInputElement>('input[name="name"]', card)).value = me.name;
+  ($<HTMLInputElement>('input[name="email"]', card)).value = me.email;
+  field(passForm, 'email').value = me.email;
+}
+emailForm.addEventListener('submit', async e => {
+  e.preventDefault(); if (!me) return;
+  const em = field(emailForm, 'email'), cur = field(emailForm, 'cur');
+  let bad = false;
+  [em, cur].forEach(i => { const x = !i.value.trim(); i.classList.toggle('err', x); bad = bad || x; });
+  if (bad) { say('Введите новую почту и текущий пароль'); return; }
+  const btn = $<HTMLButtonElement>('button[type="submit"]', emailForm); btn.disabled = true;
+  try {
+    const m = await api<Me>('/admin/email', { body: { email: em.value, current_password: cur.value } });
+    emailForm.reset(); me = m; applyRole(); loadProfile(); say('Почта изменена — теперь входите с ней');
+  } catch (err) { oops(err, { email: em, current_password: cur }); } finally { btn.disabled = false; }
+});
+passForm.addEventListener('submit', async e => {
+  e.preventDefault(); if (!me) return;
+  const cur = field(passForm, 'cur');
+  cur.classList.toggle('err', !cur.value);
+  if (!cur.value) { say('Введите текущий пароль'); return; }
+  if (!pw2(passForm)) return;
+  const btn = $<HTMLButtonElement>('button[type="submit"]', passForm); btn.disabled = true;
+  try {
+    await api<Me>('/admin/password', { body: { current_password: cur.value, new_password: field(passForm, 'pass').value } });
+    passForm.reset(); loadProfile(); say('Пароль изменён — на других устройствах вход закрыт');
+  } catch (err) { oops(err, { current_password: cur, new_password: field(passForm, 'pass') }); } finally { btn.disabled = false; }
+});
+
 $$('.js-logout').forEach(b => b.addEventListener('click', async () => { try { await api('/admin/logout', { method: 'POST' }); } catch { /* всё равно выходим */ } me = null; location.hash = '#login'; route(); }));
 
-const loaders: Record<string, () => void> = { bookings: loadBk, orders: loadOr, questions: loadQ, menu: loadMi, events: loadEv, content: loadContent, notify: () => { loadContent(); loadNotes(); }, staff: loadStaff };
+const loaders: Record<string, () => void> = { bookings: loadBk, orders: loadOr, questions: loadQ, menu: loadMi, events: loadEv, content: loadContent, notify: () => { loadContent(); loadNotes(); }, staff: loadStaff, profile: loadProfile };
 function route() {
   const [s, sub] = (location.hash.slice(1) || 'bookings').split('/');
   closeSheet();

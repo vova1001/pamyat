@@ -12,7 +12,7 @@ import (
 const createStaff = `-- name: CreateStaff :one
 INSERT INTO admins (email, password_hash, name, role, must_change_password)
 VALUES ($1, $2, $3, $4, TRUE)
-RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at
+RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at, former_emails
 `
 
 type CreateStaffParams struct {
@@ -42,12 +42,13 @@ func (q *Queries) CreateStaff(ctx context.Context, arg CreateStaffParams) (Admin
 		&i.SetupTokenHash,
 		&i.SetupExpiresAt,
 		&i.LastLoginAt,
+		&i.FormerEmails,
 	)
 	return i, err
 }
 
 const listStaff = `-- name: ListStaff :many
-SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at FROM admins ORDER BY (role = 'admin') DESC, active DESC, name, id
+SELECT id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at, former_emails FROM admins ORDER BY (role = 'admin') DESC, active DESC, name, id
 `
 
 func (q *Queries) ListStaff(ctx context.Context) ([]Admin, error) {
@@ -71,6 +72,7 @@ func (q *Queries) ListStaff(ctx context.Context) ([]Admin, error) {
 			&i.SetupTokenHash,
 			&i.SetupExpiresAt,
 			&i.LastLoginAt,
+			&i.FormerEmails,
 		); err != nil {
 			return nil, err
 		}
@@ -85,7 +87,7 @@ func (q *Queries) ListStaff(ctx context.Context) ([]Admin, error) {
 const resetStaffPassword = `-- name: ResetStaffPassword :one
 UPDATE admins SET password_hash = $2, must_change_password = TRUE
 WHERE id = $1
-RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at
+RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at, former_emails
 `
 
 type ResetStaffPasswordParams struct {
@@ -109,6 +111,7 @@ func (q *Queries) ResetStaffPassword(ctx context.Context, arg ResetStaffPassword
 		&i.SetupTokenHash,
 		&i.SetupExpiresAt,
 		&i.LastLoginAt,
+		&i.FormerEmails,
 	)
 	return i, err
 }
@@ -116,7 +119,7 @@ func (q *Queries) ResetStaffPassword(ctx context.Context, arg ResetStaffPassword
 const updateStaff = `-- name: UpdateStaff :one
 UPDATE admins SET name = $2, email = $3, active = $4
 WHERE id = $1
-RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at
+RETURNING id, email, password_hash, created_at, name, role, active, must_change_password, setup_token_hash, setup_expires_at, last_login_at, former_emails
 `
 
 type UpdateStaffParams struct {
@@ -146,6 +149,7 @@ func (q *Queries) UpdateStaff(ctx context.Context, arg UpdateStaffParams) (Admin
 		&i.SetupTokenHash,
 		&i.SetupExpiresAt,
 		&i.LastLoginAt,
+		&i.FormerEmails,
 	)
 	return i, err
 }

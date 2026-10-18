@@ -94,6 +94,7 @@ func (s *Server) Routes() http.Handler {
 				// сотрудник и администратор
 				r.Group(func(r chi.Router) {
 					r.Use(requirePasswordSet)
+					r.Post("/email", s.changeEmail) // «Профиль»: своя почта
 					r.Get("/bookings", s.listBookings)
 					r.Post("/bookings/{id}/confirm", s.confirmBooking)
 					r.Post("/bookings/{id}/cancel", s.cancelBooking)
@@ -182,7 +183,7 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, service.ErrMustChangePassword):
 		writeErr(w, http.StatusForbidden, "password_change_required", "Сначала смените временный пароль", nil)
 	case errors.Is(err, service.ErrWrongPassword):
-		writeErr(w, http.StatusUnprocessableEntity, "validation", "Неверный текущий пароль", map[string]string{"current_password": "Неверный текущий пароль"})
+		writeErr(w, http.StatusForbidden, "wrong_password", "Неверный текущий пароль", map[string]string{"current_password": "Неверный текущий пароль"})
 	case errors.Is(err, service.ErrSetupExpired):
 		writeErr(w, http.StatusGone, "setup_expired", "Ссылка устарела или уже использована — попросите в студии новую", nil)
 	default:

@@ -541,7 +541,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Сменить свой пароль. С временным паролем (must_change_password) текущий не нужен, иначе обязателен. Другие сессии закрываются */
+        /** Сменить свой пароль. С временным паролем (must_change_password) текущий не нужен, иначе обязателен. Другие сессии закрываются; после обычной смены — письмо-уведомление на почту (если почта подключена) */
         post: {
             parameters: {
                 query?: never;
@@ -565,6 +565,76 @@ export interface paths {
                     };
                 };
                 401: components["responses"]["Error"];
+                /** @description Неверный текущий пароль (code wrong_password) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                422: components["responses"]["Error"];
+                429: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** «Профиль»: сменить свою почту (логин). Нужен текущий пароль; почта уникальна среди входов. Другие сессии закрываются, на прежнюю почту — письмо-уведомление (если почта подключена). Ограничение частоты — как у входа */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailChange"];
+                };
+            };
+            responses: {
+                /** @description Сменена */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Me"];
+                    };
+                };
+                401: components["responses"]["Error"];
+                /** @description Неверный текущий пароль (code wrong_password) или сначала смена временного пароля */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Почта уже занята другим входом */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 422: components["responses"]["Error"];
                 429: components["responses"]["Error"];
             };
@@ -2162,6 +2232,11 @@ export interface components {
         PasswordChange: {
             current_password?: string;
             new_password: string;
+        };
+        EmailChange: {
+            current_password: string;
+            /** Format: email */
+            email: string;
         };
         Setup: {
             token: string;

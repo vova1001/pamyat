@@ -173,18 +173,83 @@ func (s *Service) ChangePassword(ctx context.Context, acc Account, sessionToken,
 	if err != nil {
 		return err
 	}
-	return s.inTx(ctx, func(q *store.Queries) error {
+	if err := s.inTx(ctx, func(q *store.Queries) error {
 		if err := q.SetOwnPassword(ctx, store.SetOwnPasswordParams{ID: a.ID, PasswordHash: h}); err != nil {
 			return err
 		}
 		return q.DeleteOtherSessions(ctx, store.DeleteOtherSessionsParams{AdminID: a.ID, TokenHash: hashToken(sessionToken)})
+	}); err != nil {
+		return err
+	}
+	if !a.MustChangePassword {
+		s.mailSecurity(ctx, a.Email, "Пароль от кабинета КофеСобакен изменён",
+			"Пароль для входа в кабинет только что сменили в разделе «Профиль». На других устройствах вход закрыт.")
+	}
+	return nil
+}
+
+// ChangeEmail — смена своей почты (логина) в «Профиле»: нужен текущий пароль; почта — уникальна среди входов.
+// Остальные сессии человека закрываются; на прежнюю почту — письмо-уведомление (если почта подключена).
+func (s *Service) ChangeEmail(ctx context.Context, acc Account, sessionToken, current, email string) (Account, error) {
+	a, err := s.q.GetAdminByID(ctx, acc.ID)
+	if err != nil {
+		return Account{}, notFound(err)
+	}
+	if a.PasswordHash == "" || bcrypt.CompareHashAndPassword([]byte(a.PasswordHash), []byte(current)) != nil {
+		return Account{}, ErrWrongPassword
+	}
+	email = normEmail(email)
+	f := fields{}
+	checkEmail(f, "email", email)
+	if f["email"] == "" && email == a.Email {
+		f.add("email", "Это ваша нынешняя почта")
+	}
+	if err := f.err(); err != nil {
+		return Account{}, err
+	}
+	var out store.Admin
+	err = s.inTx(ctx, func(q *store.Queries) error {
+		if out, err = q.SetOwnEmail(ctx, store.SetOwnEmailParams{ID: a.ID, Email: email}); err != nil {
+			return err
+		}
+		return q.DeleteOtherSessions(ctx, store.DeleteOtherSessionsParams{AdminID: a.ID, TokenHash: hashToken(sessionToken)})
 	})
+	if isUnique(err) {
+		return Account{}, errEmailTaken
+	}
+	if err != nil {
+		return Account{}, err
+	}
+	s.mailSecurity(ctx, a.Email, "Почта для входа в кабинет КофеСобакен изменена",
+		"Почту для входа в кабинет только что сменили в разделе «Профиль» на "+email+". На других устройствах вход закрыт.")
+	return accountOf(out), nil
+}
+
+// mailSecurity — письмо о смене пароля или почты. Без почтового ключа — ничего; ошибка — только в лог.
+func (s *Service) mailSecurity(ctx context.Context, to, title, body string) {
+	ch, ok := s.mailer()
+	if !ok {
+		return
+	}
+	body += "\nЕсли это были не вы — сразу напишите в студию или администратору кофейни."
+	if err := ch.Send(ctx, to, notify.Message{Kind: "security", Title: title, Body: body}); err != nil {
+		logErr("письмо о смене входа", err)
+	}
+}
+
+// adminByLogin — вход по почте; если почту сменили в «Профиле» — по прежней (ADMIN_EMAIL в окружении остаётся старым).
+func (s *Service) adminByLogin(ctx context.Context, email string) (store.Admin, error) {
+	a, err := s.q.GetAdminByEmail(ctx, normEmail(email))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return s.q.GetAdminByFormerEmail(ctx, normEmail(email))
+	}
+	return a, err
 }
 
 // IssueSetupLink создаёт администратору одноразовый код первого входа (старый код перестаёт действовать).
 // В базе — только хэш кода; сам код показывается один раз (в логе сервера) ссылкой /admin#setup/<код>.
 func (s *Service) IssueSetupLink(ctx context.Context, email string) (string, error) {
-	a, err := s.q.GetAdminByEmail(ctx, normEmail(email))
+	a, err := s.adminByLogin(ctx, email)
 	if err != nil {
 		return "", notFound(err)
 	}
@@ -310,6 +375,9 @@ func (s *Service) MailSetupLink(ctx context.Context, email, link string) {
 	ch, ok := s.mailer()
 	if !ok || email == "" {
 		return
+	}
+	if a, err := s.adminByLogin(ctx, email); err == nil {
+		email = a.Email // почту сменили в «Профиле» — ссылка уходит на нынешнюю
 	}
 	err := ch.Send(ctx, normEmail(email), notify.Message{
 		Kind:  "setup",

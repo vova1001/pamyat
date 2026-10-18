@@ -42,7 +42,7 @@ type StaffUpdate struct {
 
 var (
 	errEmailTaken = &ConflictError{Msg: "Эта почта уже есть в кабинете"}
-	errSelf       = &ConflictError{Msg: "Себя изменить здесь нельзя — свой пароль меняется при входе"}
+	errSelf       = &ConflictError{Msg: "Себя здесь не изменить — свои почта и пароль меняются в «Профиле»"}
 )
 
 func isUnique(err error) bool {
@@ -52,8 +52,12 @@ func isUnique(err error) bool {
 
 func checkStaff(f fields, name, email string) {
 	checkLen(f, "name", name, 1, 60, "Укажите имя — до 60 символов")
+	checkEmail(f, "email", email)
+}
+
+func checkEmail(f fields, key, email string) {
 	if a, err := mail.ParseAddress(email); err != nil || a.Address != email || len(email) > 120 {
-		f.add("email", "Проверьте адрес почты")
+		f.add(key, "Проверьте адрес почты")
 	}
 }
 

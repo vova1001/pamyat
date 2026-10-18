@@ -23,6 +23,7 @@ type Admin struct {
 	SetupTokenHash     pgtype.Text `json:"setup_token_hash"`
 	SetupExpiresAt     *time.Time  `json:"setup_expires_at"`
 	LastLoginAt        *time.Time  `json:"last_login_at"`
+	FormerEmails       []string    `json:"former_emails"`
 }
 
 type Booking struct {

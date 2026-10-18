@@ -298,6 +298,79 @@ func TestSetupLink(t *testing.T) {
 	}
 }
 
+// «Профиль»: письма о смене, прежняя почта администратора не создаёт второй вход при перезапуске.
+func TestProfileEmailAndPassword(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	tok, acc, err := e.svc.Login(ctx, "owner@example.com", "secret-pass")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.svc.ChangePassword(ctx, acc, tok, "nope", "owner-new-1"); !errors.Is(err, service.ErrWrongPassword) {
+		t.Fatalf("неверный текущий: %v", err)
+	}
+	if err := e.svc.ChangePassword(ctx, acc, tok, "secret-pass", "secret-pass"); err == nil {
+		t.Fatal("тот же пароль — ошибка поля")
+	}
+	if err := e.svc.ChangePassword(ctx, acc, tok, "secret-pass", "owner-new-1"); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(e.email.sent); n != 1 || e.email.sent[0].Kind != "security" || !strings.Contains(e.email.sent[0].Title, "Пароль") {
+		t.Fatalf("письмо о смене пароля: %+v", e.email.sent)
+	}
+	if _, err := e.svc.ChangeEmail(ctx, acc, tok, "secret-pass", "boss@example.com"); !errors.Is(err, service.ErrWrongPassword) {
+		t.Fatalf("неверный текущий: %v", err)
+	}
+	if _, err := e.svc.ChangeEmail(ctx, acc, tok, "owner-new-1", "bad"); err == nil {
+		t.Fatal("кривая почта")
+	}
+	if _, err := e.svc.CreateStaff(ctx, service.StaffCreate{Name: "Анна", Email: "anna@example.com", Password: "temp-pass-1"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.ChangeEmail(ctx, acc, tok, "owner-new-1", "anna@example.com"); err == nil {
+		t.Fatal("занятая почта")
+	} else {
+		conflict(t, err)
+	}
+	got, err := e.svc.ChangeEmail(ctx, acc, tok, "owner-new-1", "Boss@Example.com")
+	if err != nil || got.Email != "boss@example.com" {
+		t.Fatalf("смена почты: %v %+v", err, got)
+	}
+	if n := len(e.email.sent); n != 2 || !strings.Contains(e.email.sent[1].Body, "boss@example.com") {
+		t.Fatalf("письмо о смене почты: %+v", e.email.sent)
+	}
+
+	// перезапуск со старым ADMIN_EMAIL и паролем: второй вход на старую почту не появляется
+	if err := e.svc.Bootstrap(ctx, "owner@example.com", "secret-pass", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := e.svc.Login(ctx, "owner@example.com", "secret-pass"); !errors.Is(err, service.ErrBadLogin) {
+		t.Fatal("старая почта не должна снова открывать кабинет")
+	}
+	if code, err := e.svc.PendingSetup(ctx, "owner@example.com"); err != nil || code != "" {
+		t.Fatalf("пароль задан — ссылка не нужна: %q %v", code, err)
+	}
+	staff, _ := e.svc.ListStaff(ctx)
+	if len(staff) != 2 {
+		t.Fatalf("входов должно остаться 2, есть %d", len(staff))
+	}
+	// admin-link по старому ADMIN_EMAIL находит администратора под новой почтой
+	code, err := e.svc.IssueSetupLink(ctx, "owner@example.com")
+	if err != nil || code == "" {
+		t.Fatalf("admin-link: %q %v", code, err)
+	}
+	if email, err := e.svc.SetupEmail(ctx, code); err != nil || email != "boss@example.com" {
+		t.Fatalf("ссылка — на нынешнюю почту: %q %v", email, err)
+	}
+	// почту можно вернуть прежнюю
+	if _, err := e.svc.ChangeEmail(ctx, got, tok, "owner-new-1", "owner@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := e.svc.Login(ctx, "owner@example.com", "owner-new-1"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestStaff(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()

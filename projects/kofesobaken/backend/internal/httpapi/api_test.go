@@ -471,7 +471,7 @@ func TestStaffRoles(t *testing.T) {
 	if st, m, _ := staff.do("POST", "/api/admin/password", map[string]string{"new_password": "anna-own-1"}); st != 200 || m["must_change_password"] != false {
 		t.Fatalf("смена временного пароля: %d %v", st, m)
 	}
-	if st, m, _ := staff.do("POST", "/api/admin/password", map[string]string{"current_password": "nope", "new_password": "anna-own-2"}); st != 422 || m["error"].(map[string]any)["fields"].(map[string]any)["current_password"] == nil {
+	if st, m, _ := staff.do("POST", "/api/admin/password", map[string]string{"current_password": "nope", "new_password": "anna-own-2"}); st != 403 || errCode(m) != "wrong_password" || m["error"].(map[string]any)["fields"].(map[string]any)["current_password"] == nil {
 		t.Fatalf("неверный текущий пароль: %d %v", st, m)
 	}
 
@@ -524,6 +524,91 @@ func TestStaffRoles(t *testing.T) {
 	}
 	if st, _, _ := admin.do("GET", "/api/admin/me", nil); st != 200 {
 		t.Fatal("администратор на месте")
+	}
+}
+
+// «Профиль»: смена своего пароля и почты; неверный текущий пароль — 403, занятая почта — 409,
+// другие сессии закрываются, текущая остаётся.
+func TestProfile(t *testing.T) {
+	admin, _ := setup(t)
+	login := func(c *client, email, pw string) int {
+		st, _, _ := c.do("POST", "/api/admin/login", map[string]string{"email": email, "password": pw})
+		return st
+	}
+	if login(admin, "owner@example.com", "pass-123") != 200 {
+		t.Fatal("вход")
+	}
+	other := admin.newClient() // тот же человек на другом устройстве
+	if login(other, "owner@example.com", "pass-123") != 200 {
+		t.Fatal("вход со второго устройства")
+	}
+	admin.do("POST", "/api/admin/staff", map[string]string{"name": "Анна", "email": "anna@example.com", "password": "temp-pass-1"})
+
+	// пароль
+	if st, m, _ := admin.do("POST", "/api/admin/password", map[string]string{"current_password": "wrong-1", "new_password": "owner-new-1"}); st != 403 || errCode(m) != "wrong_password" {
+		t.Fatalf("неверный текущий пароль: %d %v", st, m)
+	}
+	if st, _, _ := admin.do("POST", "/api/admin/password", map[string]string{"current_password": "pass-123", "new_password": "short"}); st != 422 {
+		t.Fatalf("короткий новый пароль: %d", st)
+	}
+	if st, m, _ := admin.do("POST", "/api/admin/password", map[string]string{"current_password": "pass-123", "new_password": "owner-new-1"}); st != 200 || m["email"] != "owner@example.com" {
+		t.Fatalf("смена пароля: %d %v", st, m)
+	}
+	if st, _, _ := other.do("GET", "/api/admin/me", nil); st != 401 {
+		t.Fatalf("другая сессия после смены пароля: %d", st)
+	}
+	if st, _, _ := admin.do("GET", "/api/admin/me", nil); st != 200 {
+		t.Fatalf("своя сессия после смены пароля: %d", st)
+	}
+	if login(other, "owner@example.com", "pass-123") != 401 || login(other, "owner@example.com", "owner-new-1") != 200 {
+		t.Fatal("вход: старый пароль не подходит, новый — да")
+	}
+
+	// почта
+	for _, c := range []struct {
+		body map[string]string
+		st   int
+		code string
+	}{
+		{map[string]string{"current_password": "wrong-2", "email": "boss@example.com"}, 403, "wrong_password"},
+		{map[string]string{"current_password": "owner-new-1", "email": "Anna@Example.com"}, 409, "conflict"},
+		{map[string]string{"current_password": "owner-new-1", "email": "not-an-email"}, 422, "validation"},
+		{map[string]string{"current_password": "owner-new-1", "email": "owner@example.com"}, 422, "validation"},
+	} {
+		if st, m, _ := admin.do("POST", "/api/admin/email", c.body); st != c.st || errCode(m) != c.code {
+			t.Errorf("почта %v: %d %v", c.body, st, m)
+		}
+	}
+	if st, m, _ := admin.do("POST", "/api/admin/email", map[string]string{"current_password": "owner-new-1", "email": " Boss@Example.com "}); st != 200 || m["email"] != "boss@example.com" || m["role"] != "admin" {
+		t.Fatalf("смена почты: %d %v", st, m)
+	}
+	if st, _, _ := other.do("GET", "/api/admin/me", nil); st != 401 {
+		t.Fatalf("другая сессия после смены почты: %d", st)
+	}
+	if st, m, _ := admin.do("GET", "/api/admin/me", nil); st != 200 || m["email"] != "boss@example.com" {
+		t.Fatalf("своя сессия после смены почты: %d %v", st, m)
+	}
+	if login(other, "owner@example.com", "owner-new-1") != 401 || login(other, "boss@example.com", "owner-new-1") != 200 {
+		t.Fatal("вход: старая почта не подходит, новая — да")
+	}
+
+	// сотрудник тоже может; с временным паролем — сначала смена пароля
+	staff := admin.newClient()
+	login(staff, "anna@example.com", "temp-pass-1")
+	if st, m, _ := staff.do("POST", "/api/admin/email", map[string]string{"current_password": "temp-pass-1", "email": "anna2@example.com"}); st != 403 || errCode(m) != "password_change_required" {
+		t.Fatalf("почта с временным паролем: %d %v", st, m)
+	}
+	staff.do("POST", "/api/admin/password", map[string]string{"new_password": "anna-own-1"})
+	if st, m, _ := staff.do("POST", "/api/admin/email", map[string]string{"current_password": "anna-own-1", "email": "anna2@example.com"}); st != 200 || m["role"] != "staff" {
+		t.Fatalf("почта сотрудника: %d %v", st, m)
+	}
+
+	// неверный текущий пароль ограничен как вход: после 8 за 15 минут — 429
+	for i := 0; i < 8; i++ {
+		admin.do("POST", "/api/admin/email", map[string]string{"current_password": "guess", "email": "x@example.com"})
+	}
+	if st, m, _ := admin.do("POST", "/api/admin/email", map[string]string{"current_password": "owner-new-1", "email": "x@example.com"}); st != 429 || errCode(m) != "rate_limited" {
+		t.Fatalf("ограничение частоты: %d %v", st, m)
 	}
 }
 
