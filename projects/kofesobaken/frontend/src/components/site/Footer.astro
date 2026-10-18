@@ -13,7 +13,7 @@ const { content: c, page = false } = Astro.props; // page — отдельная
       </div>
       <div><h5>Гостям</h5><ul><li><a href="/#menu">Меню</a></li><li><a href="/#dogs">Наши собаки</a></li><li><a href="/#events">Мероприятия</a></li><li><a href="/#booking">Бронь столика</a></li><li><a href="/#order">С собой и доставка</a></li></ul></div>
       <div><h5>Адрес</h5><ul><li>{c.address}</li><li>Ростов-на-Дону</li><li>{cap(c.hours)}</li></ul></div>
-      <div><h5>Связь</h5><ul><li><a href="https://t.me/ludi_bydte_dobree" target="_blank" rel="noopener">Telegram</a></li><li><a href="mailto:vovaoleshko05@mail.ru">vovaoleshko05@mail.ru</a></li></ul></div>
+      <div><h5>Связь</h5><ul><li><a href="https://t.me/ludi_bydte_dobree" target="_blank" rel="noopener" data-ask="telegram">Telegram</a></li><li><a href="mailto:vovaoleshko05@mail.ru" data-ask="email">vovaoleshko05@mail.ru</a></li></ul></div>
     </div>
     <div class="ftr__bottom">
       <span>© 2026 КофеСобакен · ул. Сарьяна, 34, Ростов-на-Дону · <a href="/privacy">Политика конфиденциальности</a></span>

@@ -257,20 +257,23 @@ f.addEventListener('submit', async e => {
 const askM = $('#askModal'), askF = $<HTMLFormElement>('#askForm'), askC = $<HTMLInputElement>('#askContact');
 const askBtn = $<HTMLButtonElement>('#askSubmit'), askViaT = $<HTMLInputElement>('#askViaT');
 const askIn = (n: string) => askF.elements.namedItem(n) as HTMLInputElement;
-const openAsk = () => {
+const openAsk = (via?: string) => {
+  if (via === 'telegram' || via === 'email') { askViaT.checked = via === 'telegram'; ($<HTMLInputElement>('#askViaE')).checked = via !== 'telegram'; setAskVia(); }
   askM.classList.remove('is-sent'); askM.classList.add('open'); document.body.style.overflow = 'hidden';
   setTimeout(() => askIn('name').focus(), 300);
 };
 const closeAsk = () => { askM.classList.remove('open'); document.body.style.overflow = ''; $('#askOpen').focus(); };
-$('#askOpen').addEventListener('click', openAsk);
+$('#askOpen').addEventListener('click', () => openAsk());
+// «Написать в Telegram / на почту» на сайте — та же форма вопроса, способ ответа уже выбран
+$$<HTMLAnchorElement>('[data-ask]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); openAsk(a.dataset.ask); }));
 $$('[data-close]', askM).forEach(b => b.addEventListener('click', closeAsk));
 askM.addEventListener('click', e => { if (e.target === askM) closeAsk(); });
 addEventListener('keydown', e => { if (e.key === 'Escape' && askM.classList.contains('open')) closeAsk(); });
-const setAskVia = () => {
+function setAskVia() {
   const tg = askViaT.checked;
   askC.value = ''; askC.type = tg ? 'text' : 'email'; askC.inputMode = tg ? 'text' : 'email';
   askC.autocomplete = tg ? 'off' : 'email'; askC.placeholder = tg ? '@ваш_ник' : 'anna@mail.ru'; askC.classList.remove('err');
-};
+}
 $$('input[name="askvia"]').forEach(i => i.addEventListener('change', setAskVia));
 askC.addEventListener('input', () => { if (askViaT.checked && askC.value && !askC.value.startsWith('@')) askC.value = '@' + askC.value.replace(/@/g, ''); });
 askF.addEventListener('submit', async e => {
