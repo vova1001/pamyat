@@ -67,3 +67,4 @@
 
 ## Правила (дополняются по опыту)
 - (пусто)
+- Механики: `common/howto/services.md`, `payments.md`, `notifications.md`.
