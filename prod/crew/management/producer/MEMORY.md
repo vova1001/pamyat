@@ -6,6 +6,9 @@
 ## Вход
 `brief.md` или `audit.md`, маршрут из `CLAUDE.md`, `common/cycle.md`, файл ниши в `niches/` (если есть).
 
+## Главное
+Приоритет — дизайн и разработка. Остальные роли — минимально: только когда без них нельзя, по одному разу.
+
 ## Состав по типу проекта
 Всегда: analyst; art-director + ux-designer + ui-designer; chief-editor + copywriter + seo;
 tech-lead + frontend; qa-lead + qa + qa-automation; devops + sysadmin + services-manager.

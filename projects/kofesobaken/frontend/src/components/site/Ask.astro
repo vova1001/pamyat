@@ -1,0 +1,30 @@
+---
+// «Задать вопрос»: плавающая кнопка и окно с формой. Ответ — на почту или в Telegram; есть бот — ссылка на него.
+interface Props { bot?: string }
+const { bot = '' } = Astro.props;
+---
+<button class="ask-fab" type="button" id="askOpen" aria-haspopup="dialog" aria-controls="askModal"><svg><use href="#chat"/></svg><span>Задать вопрос</span></button>
+<div class="modal" id="askModal" role="dialog" aria-modal="true" aria-labelledby="askTitle">
+  <div class="modal__box">
+    <button class="modal__x" type="button" aria-label="Закрыть" data-close>×</button>
+    <div class="ask__head"><h3 id="askTitle">Задать вопрос</h3><p>Ответим на почту или в Telegram — как вам удобнее.</p></div>
+    <form class="form" id="askForm" novalidate>
+      <label class="fld"><span>Ваше имя</span><input class="inp" name="name" autocomplete="given-name" placeholder="Анна" maxlength="60" required></label>
+      <div class="fld"><span>Куда прислать ответ</span>
+        <div class="seg contact-seg"><input type="radio" name="askvia" id="askViaE" value="email" checked><label for="askViaE">Почта</label><input type="radio" name="askvia" id="askViaT" value="telegram"><label for="askViaT">Telegram</label></div>
+      </div>
+      <label class="fld"><input class="inp" name="contact" id="askContact" type="email" inputmode="email" autocomplete="email" placeholder="anna@mail.ru" aria-label="Почта или ник в Telegram" maxlength="254" required></label>
+      <label class="fld"><span>Ваш вопрос</span><textarea class="inp ask__q" name="question" rows="4" maxlength="2000" placeholder="Например: можно прийти с большой собакой?" required></textarea></label>
+      <div class="ask__trap" aria-hidden="true"><label>Сайт<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <label class="consent"><input type="checkbox" name="consent" required><span>Я соглашаюсь на обработку моих персональных данных, включая передачу на серверы в США, на условиях <a href="/privacy" target="_blank">Политики конфиденциальности</a></span></label>
+      <button class="btn btn--main" type="submit" id="askSubmit">Отправить вопрос<svg><use href="#arrow"/></svg></button>
+      {bot && <p class="ask__bot">Удобнее в чате? <a href={`https://t.me/${bot}`} target="_blank" rel="noopener">Напишите нашему боту в Telegram</a></p>}
+    </form>
+    <div class="success" aria-live="polite">
+      <svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#B7C4A2"/><use href="#paw" x="18" y="18" width="36" height="36" fill="#2A1A12"/></svg>
+      <h3>Вопрос отправлен!</h3>
+      <p style="color:var(--soft)" id="askDoneText">Ответим в ближайшее время.</p>
+      <button class="btn btn--ghost" type="button" data-close>Готово</button>
+    </div>
+  </div>
+</div>

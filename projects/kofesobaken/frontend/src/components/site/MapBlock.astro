@@ -1,0 +1,13 @@
+---
+// Блок карты «Как нас найти» — разметка из эскиза; карта с улицами по preview/map-render.html (скрипт ниже).
+// Пока живая карта не загрузила улицы — снимок с меткой в центре (центр снимка — кафе).
+---
+      <div class="map rv" id="map3d">
+        <a class="map__shot" href="https://yandex.ru/maps/?rtext=~47.229234%2C39.771960&amp;rtt=auto" target="_blank" rel="noopener" aria-label="Открыть маршрут в Яндекс.Картах"><img src="/img/map-streets.jpg" width="1600" height="1100" alt="Карта: КофеСобакен на улице Сарьяна, 34, Нахичевань, Ростов-на-Дону" loading="lazy"></a>
+        <div class="map__live" aria-label="Интерактивная карта: Ростов-на-Дону, ул. Сарьяна, 34"></div>
+        <div class="mpin" aria-hidden="true"><div class="mpin__tag"><b>КофеСобакен</b><span>ул. Сарьяна, 34</span></div><span class="mpin__head"><svg><use href="#paw"/></svg></span><i class="mpin__dot"></i></div>
+        <span class="map__hint"><svg><use href="#paw"/></svg>Покрутите карту</span>
+        <a class="btn btn--main map__route" href="https://yandex.ru/maps/?rtext=~47.229234%2C39.771960&amp;rtt=auto" target="_blank" rel="noopener"><svg><use href="#pin"/></svg>Построить маршрут</a>
+        <span class="map__copy">© OpenStreetMap, OpenFreeMap</span>
+      </div>
+<script>import '../../scripts/map.js';</script>

@@ -1,0 +1,45 @@
+# Render Blueprint для кнопки «Deploy to Render»: один бесплатный веб-сервис, Render сам собирает образ
+# из deploy/render/Dockerfile (nginx + Astro + Go в одном контейнере). База — Neon (PostgreSQL).
+# Секретов в файле нет: строку Neon и почту вводит заказчик при развёртывании (sync: false), пароли создаёт Render.
+# Пошагово — deploy/render.md.
+services:
+  - type: web
+    name: kofesobaken
+    runtime: docker
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL # Neon → Connection string, прямое подключение (без -pooler), с ?sslmode=require
+        sync: false
+      - key: ADMIN_EMAIL # почта администратора — логин в кабинет
+        sync: false
+      - key: ADMIN_PASSWORD # временный: после первого входа — обязательная смена на свой, этот больше не действует
+        generateValue: true
+      - key: ADMIN_PASSWORD_TEMPORARY
+        value: "true"
+      - key: PAYMENT_WEBHOOK_SECRET
+        generateValue: true
+      - key: PAYMENT_PROVIDER # yookassa; пока нет ключей ЮKassa — сайт сам работает с тестовой страницей оплаты
+        value: yookassa
+      - key: YOOKASSA_SHOP_ID # ЮKassa → Интеграция → Ключи API: shopId (тестового магазина, потом боевого)
+        sync: false
+      - key: YOOKASSA_SECRET_KEY # там же: секретный ключ (test_… / live_…)
+        sync: false
+      - key: YOOKASSA_RECEIPT # false — самозанятый, чек в «Мой налог»; true — ИП с чеками через ЮKassa
+        value: "false"
+      - key: MEDIA_STORE # фото в PostgreSQL — диска на бесплатном Render нет
+        value: postgres
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: RESEND_API_KEY # почта через Resend; пусто — письма только в журнал
+        sync: false
+      - key: MAIL_DOMAIN_VERIFIED # true — свой домен подтверждён в Resend: ответы на вопросы уходят гостям письмом
+        value: "false"
+      - key: TELEGRAM_BOT_TOKEN # бот от @BotFather: уведомления и вопросы гостей; пусто — только в журнал
+        sync: false
+      - key: SEED_DEMO # примеры мероприятий из эскиза; на боевом сайте не нужны
+        value: "false"
