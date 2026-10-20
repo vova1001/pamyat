@@ -1,0 +1,38 @@
+---
+// Общие теги <head>: заголовок, описание, адрес страницы для поиска, превью ссылок, иконки, подтверждение поисковиков.
+import { OG_IMAGE, SITE_NAME, THEME_COLOR, siteUrl, verification } from '../lib/seo';
+
+interface Props { title: string; description?: string; path?: string; noindex?: boolean }
+const { title, description, path = Astro.url.pathname, noindex = false } = Astro.props;
+const base = siteUrl(Astro.url);
+const url = base + path;
+const image = base + OG_IMAGE.path;
+const v = verification();
+---
+<title>{title}</title>
+{description && <meta name="description" content={description}>}
+{noindex ? <meta name="robots" content="noindex, nofollow"> : <link rel="canonical" href={url}>}
+<meta name="theme-color" content={THEME_COLOR}>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+{v.google && <meta name="google-site-verification" content={v.google}>}
+{v.yandex && <meta name="yandex-verification" content={v.yandex}>}
+{!noindex && (
+  <>
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:site_name" content={SITE_NAME}>
+    <meta property="og:title" content={title}>
+    {description && <meta property="og:description" content={description}>}
+    <meta property="og:url" content={url}>
+    <meta property="og:image" content={image}>
+    <meta property="og:image:width" content={String(OG_IMAGE.width)}>
+    <meta property="og:image:height" content={String(OG_IMAGE.height)}>
+    <meta property="og:image:alt" content="Маленькая собака выглядывает из-за столика с чашкой кофе">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content={title}>
+    {description && <meta name="twitter:description" content={description}>}
+    <meta name="twitter:image" content={image}>
+  </>
+)}

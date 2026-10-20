@@ -8,5 +8,8 @@ export default defineConfig({
   server: { host: true, port: 4321 },
   security: { checkOrigin: false }, // формы — на API бэкенда, у Astro своих POST нет
   devToolbar: { enabled: false },
-  vite: { worker: { format: 'es' } }, // воркер карты MapLibre — ES-модуль
+  vite: {
+    worker: { format: 'es' }, // воркер карты MapLibre — ES-модуль
+    define: { __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)) }, // lastmod в sitemap.xml
+  },
 });

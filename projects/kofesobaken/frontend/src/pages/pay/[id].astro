@@ -4,6 +4,7 @@
 import '../../styles/fonts.css';
 import '../../styles/site.css';
 import Sprite from '../../components/site/Sprite.astro';
+import Seo from '../../components/Seo.astro';
 import { getPayment } from '../../lib/server';
 import { rub } from '../../lib/format';
 
@@ -17,8 +18,7 @@ if (p.status !== 'pending') return Astro.redirect(`/?payment=${p.id}${back}`);
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
-<title>Оплата — КофеСобакен</title>
+<Seo title="Оплата — КофеСобакен" noindex />
 <style>
   .pay{min-height:100vh;display:grid;place-items:center;padding:24px var(--pad)}
   .pay .card{width:100%;max-width:460px;display:grid;gap:18px}
