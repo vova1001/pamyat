@@ -38,19 +38,19 @@
 ```tsx
 // components/brand.tsx — серверный, без JS
 export const SPARK_PATH =
-  "M306 10 L307 23.6 L313.1 18.9 L308.4 25 L322 26 L308.4 27 L313.1 33.1 L307 28.4 L306 42 L305 28.4 L298.9 33.1 L303.6 27 L290 26 L303.6 25 L298.9 18.9 L305 23.6Z";
+  "M312 10 L313 23.6 L319.1 18.9 L314.4 25 L328 26 L314.4 27 L319.1 33.1 L313 28.4 L312 42 L311 28.4 L304.9 33.1 L309.6 27 L296 26 L309.6 25 L304.9 18.9 L311 23.6Z";
 
 export function LumenLogo({ className = "", title = "Lumen", twinkle = true }: { className?: string; title?: string; twinkle?: boolean }) {
   return (
-    <svg viewBox="0 0 326 92" className={className} role="img" aria-label={title}>
+    <svg viewBox="0 0 332 92" className={className} role="img" aria-label={title}>
       <g fill="none" stroke="currentColor" strokeWidth="17" strokeLinecap="round" strokeLinejoin="round">
         <path d="M10 10V82" />                                             {/* l */}
         <path d="M34 44V64a18 18 0 0 0 36 0V44M70 44V82" />               {/* u */}
         <path d="M94 44V82M94 62a18 18 0 0 1 36 0V82M130 62a18 18 0 0 1 36 0V82" /> {/* m */}
-        <path d="M191 63H228A19 19 0 1 0 222.4 76.4" />                    {/* e */}
-        <path d="M252 44V82M252 62a18 18 0 0 1 36 0V82" />                 {/* n */}
+        <path d="M191 63H233A22 19 0 1 0 227.6 76.4" />                    {/* e */}
+        <path d="M258 44V82M258 62a18 18 0 0 1 36 0V82" />                 {/* n */}
       </g>
-      <path d={SPARK_PATH} className={`fill-spark ${twinkle ? "spark-twinkle" : ""}`} style={{ transformOrigin: "306px 26px" }} />
+      <path d={SPARK_PATH} className={`fill-spark ${twinkle ? "spark-twinkle" : ""}`} style={{ transformOrigin: "312px 26px" }} />
     </svg>
   );
 }
@@ -65,7 +65,7 @@ export function Spark({ className = "size-3", ...rest }: React.SVGProps<SVGSVGEl
 }
 ```
 - Сетка словознака: высота строчных 38 (центры штрихов 44→82), выносной «l» до 10, толщина 17, просвет между штрихами ~7 —
-  как на картинке. Искра касается плеча «n» справа сверху, как в оригинале. **Сверить с PNG наложением** (фронтенд/QA:
+  как на картинке; «e» чуть шире (эллипс 22×19), как в оригинале. Искра касается плеча «n» справа сверху, как в оригинале. **Сверить с PNG наложением** (фронтенд/QA:
   скриншот 600px поверх `assets/lumen-logo.png` при 50% прозрачности; допуск — «на глаз то же»; если «e» или «m» шире —
   менять только `a18` радиусы и x-координаты, толщину не трогать).
 - Размеры: шапка — `h-6 w-auto` (24px, ~85px ширина); вход/кабинет — `h-5`; подвал — гигант (п.6.6). Минимум — 16px высоты.
