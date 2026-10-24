@@ -205,10 +205,14 @@ function submitLabel() {
   const price = +(current.dataset.price || 0), n = +(people.textContent || 1);
   evSubmit.innerHTML = (price > 0 ? `Записаться · ${rub(price * n)}` : 'Записаться') + arrow;
 }
+function setEvImg(card: HTMLElement) {
+  const img = $<HTMLImageElement>('#evImg');
+  img.src = card.dataset.img || ''; img.alt = card.dataset.ev || '';
+}
 function openEvent(card: HTMLElement) {
   current = card;
   $('#evTitle').textContent = card.dataset.ev || ''; $('#evWhen').textContent = card.dataset.when || '';
-  $<HTMLImageElement>('#evImg').src = card.dataset.img || '';
+  setEvImg(card);
   $('#evDogFld').style.visibility = card.dataset.dogs === '1' ? '' : 'hidden';
   people.textContent = '1'; submitLabel();
   m.classList.remove('is-sent'); m.classList.add('open'); document.body.style.overflow = 'hidden';
@@ -319,7 +323,7 @@ async function afterPayment() {
   }
   if (p.kind === 'signup') {
     const card = $$<HTMLElement>('.ev').find(x => p.description.startsWith(x.dataset.ev || '\u0000'));
-    if (card) { current = card; $('#evTitle').textContent = card.dataset.ev || ''; $('#evWhen').textContent = card.dataset.when || ''; $<HTMLImageElement>('#evImg').src = card.dataset.img || ''; }
+    if (card) { current = card; $('#evTitle').textContent = card.dataset.ev || ''; $('#evWhen').textContent = card.dataset.when || ''; setEvImg(card); }
     m.classList.add('open', 'is-sent'); document.body.style.overflow = 'hidden';
   }
 }

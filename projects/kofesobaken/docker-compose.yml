@@ -58,6 +58,9 @@ services:
       args: *registry
     environment:
       BACKEND_URL: http://backend:8080
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8000}
+      GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
+      YANDEX_VERIFICATION: ${YANDEX_VERIFICATION:-}
     depends_on:
       backend:
         condition: service_healthy

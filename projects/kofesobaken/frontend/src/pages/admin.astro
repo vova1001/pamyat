@@ -2,6 +2,7 @@
 // Кабинет администратора и сотрудников. Разметка — из согласованного эскиза admin.html; данные — через API.
 import '../styles/fonts.css';
 import '../styles/admin.css';
+import Seo from '../components/Seo.astro';
 Astro.response.headers.set('Cache-Control', 'no-store');
 ---
 <!doctype html>
@@ -9,9 +10,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Кабинет — КофеСобакен</title>
-<meta name="robots" content="noindex">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<Seo title="Кабинет — КофеСобакен" noindex />
 </head>
 <body>
 

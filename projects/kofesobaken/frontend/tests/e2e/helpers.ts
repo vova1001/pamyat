@@ -16,6 +16,7 @@ export async function login(page: Page) {
 export async function payTest(page: Page) {
   await page.waitForURL(/\/pay\//);
   await expect(page.getByText('Тестовая оплата — деньги не списываются')).toBeVisible();
+  await expect(page.locator('head meta[name="robots"]')).toHaveAttribute('content', /noindex/); // страница оплаты не в поиске
   await page.locator('#payOk').click();
   await page.waitForURL(u => u.pathname === '/');
 }

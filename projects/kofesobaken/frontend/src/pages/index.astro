@@ -15,7 +15,9 @@ import Contacts from '../components/site/Contacts.astro';
 import Footer from '../components/site/Footer.astro';
 import EventModal from '../components/site/EventModal.astro';
 import Ask from '../components/site/Ask.astro';
+import Seo from '../components/Seo.astro';
 import { getSite } from '../lib/server';
+import { cafeJsonLd, jsonForScript, siteUrl } from '../lib/seo';
 
 const site = await getSite();
 const c = site.content;
@@ -26,9 +28,8 @@ Astro.response.headers.set('Cache-Control', 'no-store');
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>КофеСобакен — кофейня с собаками в Ростове-на-Дону</title>
-<meta name="description" content={`Кофейня с маленькими собаками в зале. Приходите сами или со своим питомцем. Ростов-на-Дону, ${c.address}.`}>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<Seo title="КофеСобакен — кофейня с собаками в Ростове-на-Дону" description={`Кофейня с маленькими собаками в зале. Приходите сами или со своим питомцем. Ростов-на-Дону, ${c.address}.`} path="/" />
+<script type="application/ld+json" set:html={jsonForScript(cafeJsonLd(c, siteUrl(Astro.url)))} />
 </head>
 <body>
 <Sprite />

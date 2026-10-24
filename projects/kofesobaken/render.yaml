@@ -41,5 +41,9 @@ services:
         value: "false"
       - key: TELEGRAM_BOT_TOKEN # бот от @BotFather: уведомления и вопросы гостей; пусто — только в журнал
         sync: false
+      - key: GOOGLE_SITE_VERIFICATION # Search Console → «HTML-тег»: только значение content="…"; пусто — тега нет
+        sync: false
+      - key: YANDEX_VERIFICATION # Яндекс.Вебмастер → «Метатег»: только значение content="…"; пусто — тега нет
+        sync: false
       - key: SEED_DEMO # примеры мероприятий из эскиза; на боевом сайте не нужны
         value: "false"

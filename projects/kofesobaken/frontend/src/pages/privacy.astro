@@ -4,6 +4,7 @@ import '../styles/fonts.css';
 import '../styles/site.css';
 import Sprite from '../components/site/Sprite.astro';
 import Footer from '../components/site/Footer.astro';
+import Seo from '../components/Seo.astro';
 import { getSite } from '../lib/server';
 
 const site = await getSite();
@@ -14,9 +15,7 @@ const mail = 'vovaoleshko05@mail.ru';
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Политика конфиденциальности — КофеСобакен</title>
-<meta name="description" content="Как кофейня «КофеСобакен» обрабатывает персональные данные гостей сайта.">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<Seo title="Политика конфиденциальности — КофеСобакен" description="Как кофейня «КофеСобакен» обрабатывает персональные данные гостей сайта." path="/privacy" />
 </head>
 <body>
 <Sprite />
